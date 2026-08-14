@@ -1,0 +1,400 @@
+import 'package:flutter/material.dart';
+import 'gtk_scaffold.dart';
+import 'gtk_native_header_bar.dart';
+import 'macos_native_button.dart';
+import 'macos_native_switch.dart';
+import 'macos_input_field.dart';
+import 'route_observer.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'GTK Native Scaffold Demo',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          brightness: Brightness.dark,
+          seedColor: Colors.deepPurple,
+        ),
+      ),
+      themeMode: ThemeMode.system,
+      home: const MyHomePage(title: 'GTK Native Scaffold'),
+      navigatorObservers: [routeObserver],
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+
+  final String title;
+
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  int _currentTabIndex = 0;
+  int _counter = 0;
+  bool _isSwitchOn = true;
+  String _lastSubmitted = '';
+
+  void _incrementCounter() {
+    setState(() {
+      _counter++;
+    });
+  }
+
+  void _onSwitchChanged(bool value) {
+    setState(() {
+      _isSwitchOn = value;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String currentTitle = _currentTabIndex == 0
+        ? 'Home Page'
+        : _currentTabIndex == 1
+        ? 'Native Controls'
+        : 'Settings';
+
+    final String currentSubtitle = _currentTabIndex == 0
+        ? 'GTK HeaderBar Demo'
+        : _currentTabIndex == 1
+        ? 'GTK Button, Switch & Entry'
+        : 'Configuration Options';
+
+    return Scaffold(
+      // extendBodyBehindAppBar: true,
+      extendBody: true,
+
+      bottomNavigationBar: GtkBottomNavigationBar(
+        currentIndex: _currentTabIndex,
+        onTap: (index) {
+          setState(() {
+            _currentTabIndex = index;
+          });
+        },
+        items: const [
+          GtkBottomNavigationItem(
+            id: "0",
+            label: 'Home',
+            iconName: 'go-home-symbolic',
+          ),
+          GtkBottomNavigationItem(
+            id: "1",
+            label: 'Controls',
+            iconName: 'edit-symbolic',
+          ),
+        ],
+      ),
+      backgroundColor: const Color.fromARGB(175, 45, 27, 78),
+      body: switch (_currentTabIndex) {
+        0 => Center(
+          child: Scaffold(
+            // extendBodyBehindAppBar: true,
+            extendBody: true,
+            appBar: GtkNativeHeaderBar(
+              title: currentTitle,
+              subtitle: currentSubtitle,
+              backgroundColor: const Color.fromARGB(46, 45, 27, 78),
+              leading: _currentTabIndex > 0
+                  ? GtkHeaderAction(
+                      id: 'back',
+                      iconName: 'go-previous-symbolic',
+                      label: 'Back',
+                      position: 'start',
+                      onPressed: () {
+                        setState(() {
+                          _currentTabIndex = 0;
+                        });
+                      },
+                    )
+                  : null,
+              actions: [
+                GtkHeaderAction(
+                  id: 'refresh',
+                  iconName: 'view-refresh-symbolic',
+                  label: 'Refresh',
+                  position: 'end',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Native GTK Refresh Action Clicked!'),
+                      ),
+                    );
+                  },
+                ),
+                GtkHeaderAction(
+                  id: 'info',
+                  iconName: 'dialog-information-symbolic',
+                  label: 'Info',
+                  position: 'end',
+                  onPressed: () {
+                    showAboutDialog(
+                      context: context,
+                      applicationName: 'GTK Native Scaffold',
+                      applicationVersion: '1.0.0',
+                    );
+                  },
+                ),
+              ],
+            ),
+            body: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.desktop_windows,
+                    size: 64,
+                    color: Colors.deepPurple,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Welcome to GTK Native Scaffold',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'The top bar (GtkHeaderBar) is a native GTK widget!',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Counter value: $_counter',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _incrementCounter,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Increment Counter'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Tab 1: Native Controls,
+        1 => Scaffold(
+          // extendBodyBehindAppBar: true,
+          extendBody: true,
+          appBar: GtkNativeHeaderBar(
+            title: currentTitle,
+            subtitle: currentSubtitle,
+            backgroundColor: const Color.fromARGB(46, 45, 27, 78),
+            leading: _currentTabIndex > 0
+                ? GtkHeaderAction(
+                    id: 'back',
+                    iconName: 'go-previous-symbolic',
+                    label: 'Back',
+                    position: 'start',
+                    onPressed: () {
+                      setState(() {
+                        _currentTabIndex = 0;
+                      });
+                    },
+                  )
+                : null,
+            actions: [
+              GtkHeaderAction(
+                id: 'refresh',
+                iconName: 'view-refresh-symbolic',
+                label: 'Refresh',
+                position: 'end',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Native GTK Refresh Action Clicked!'),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Native GTK Button:'),
+                const SizedBox(height: 8),
+                MacosNativeButton(
+                  title: "Native GTK Button",
+                  onPressed: () {
+                    _incrementCounter();
+                  },
+                ),
+                const SizedBox(height: 24),
+                const Text('Native GTK Switch:'),
+                const SizedBox(height: 8),
+                MacosNativeSwitch(
+                  value: _isSwitchOn,
+                  onChanged: _onSwitchChanged,
+                ),
+                const SizedBox(height: 8),
+                Text('Switch is ${_isSwitchOn ? 'ON' : 'OFF'}'),
+                const SizedBox(height: 24),
+                const Text('Native GTK Input Field (Entry):'),
+                const SizedBox(height: 8),
+                MacosInputField(
+                  width: 300,
+                  height: 74,
+                  placeholder: 'Type text and press Enter',
+                  onInput: (value) {
+                    debugPrint('Live input: $value');
+                  },
+                  onSubmit: (value) {
+                    setState(() {
+                      _lastSubmitted = value;
+                    });
+                  },
+                ),
+
+                MacosInputField(
+                  width: 300,
+                  height: 34,
+                  placeholder: 'Type text and press Enter',
+                  onInput: (value) {
+                    debugPrint('Live input: $value');
+                  },
+                  onSubmit: (value) {
+                    setState(() {
+                      applyCustomCss(value);
+                    });
+                  },
+                ),
+                if (_lastSubmitted.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text('Submitted text: $_lastSubmitted'),
+                ],
+              ],
+            ),
+          ),
+        ),
+        // Tab 2: Settings,
+        2 => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.desktop_windows,
+                  size: 64,
+                  color: Colors.deepPurple,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Welcome to GTK Native Scaffold',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'The top bar (GtkHeaderBar) is a native GTK widget!',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Counter value: $_counter',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _incrementCounter,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Increment Counter'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Tab 3: Settings,
+        3 => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.desktop_windows,
+                  size: 64,
+                  color: Colors.deepPurple,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Welcome to GTK Native Scaffold',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'The top bar (GtkHeaderBar) is a native GTK widget!',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Counter value: $_counter',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _incrementCounter,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Increment Counter'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Tab 4: Settings,
+        _ => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.desktop_windows,
+                  size: 64,
+                  color: Colors.deepPurple,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Welcome to GTK Native Scaffold',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'The top bar (GtkHeaderBar) is a native GTK widget!',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Counter value: $_counter',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _incrementCounter,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Increment Counter'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      },
+    );
+  }
+}
