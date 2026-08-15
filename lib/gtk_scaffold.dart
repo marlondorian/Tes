@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'gtk_scaffold_channel.dart';
 import 'gtk_native_header_bar.dart';
+import 'native_control_channel.dart';
 import 'route_observer.dart';
 
 class GtkHeaderAction {
@@ -90,6 +91,7 @@ class _GtkBottomNavigationBarState extends State<GtkBottomNavigationBar> {
   @override
   void initState() {
     super.initState();
+    if (!isNativeControlSupported) return;
     _ch.addListener(_handleMethodCall);
     _activeBottomNavs.add(this);
     _syncWithNative();
@@ -98,6 +100,7 @@ class _GtkBottomNavigationBarState extends State<GtkBottomNavigationBar> {
   @override
   void didUpdateWidget(GtkBottomNavigationBar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!isNativeControlSupported) return;
     if (_activeBottomNavs.isNotEmpty && _activeBottomNavs.last == this) {
       _syncWithNative();
     }
@@ -105,12 +108,14 @@ class _GtkBottomNavigationBarState extends State<GtkBottomNavigationBar> {
 
   @override
   void dispose() {
-    _ch.removeListener(_handleMethodCall);
-    _activeBottomNavs.remove(this);
-    if (_activeBottomNavs.isEmpty) {
-      _hideNative();
-    } else if (_activeBottomNavs.isNotEmpty) {
-      _activeBottomNavs.last._syncWithNative();
+    if (isNativeControlSupported) {
+      _ch.removeListener(_handleMethodCall);
+      _activeBottomNavs.remove(this);
+      if (_activeBottomNavs.isEmpty) {
+        _hideNative();
+      } else if (_activeBottomNavs.isNotEmpty) {
+        _activeBottomNavs.last._syncWithNative();
+      }
     }
     super.dispose();
   }
@@ -156,9 +161,55 @@ class _GtkBottomNavigationBarState extends State<GtkBottomNavigationBar> {
     } catch (_) {}
   }
 
+  Widget? _buildIcon(String? iconName) {
+    if (iconName == null || iconName.isEmpty) return null;
+    switch (iconName) {
+      case "go-previous-symbolic":
+      case "pan-start-symbolic":
+        return const Icon(Icons.arrow_back);
+      case "go-next-symbolic":
+      case "pan-end-symbolic":
+        return const Icon(Icons.arrow_forward);
+      case "view-refresh-symbolic":
+        return const Icon(Icons.refresh);
+      case "dialog-information-symbolic":
+        return const Icon(Icons.info_outline);
+      case "go-home-symbolic":
+        return const Icon(Icons.home);
+      case "edit-symbolic":
+        return const Icon(Icons.edit);
+      case "emblem-system-symbolic":
+      case "preferences-system-symbolic":
+        return const Icon(Icons.settings);
+      case "document-open-symbolic":
+        return const Icon(Icons.insert_drive_file);
+      case "folder-symbolic":
+        return const Icon(Icons.folder);
+      case "list-add-symbolic":
+        return const Icon(Icons.add);
+      case "user-trash-symbolic":
+        return const Icon(Icons.delete);
+      default:
+        return const Icon(Icons.widgets);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!widget.visible) return const SizedBox.shrink();
+    if (!isNativeControlSupported) {
+      return BottomNavigationBar(
+        currentIndex: widget.currentIndex,
+        onTap: widget.onTap,
+        backgroundColor: widget.backgroundColor,
+        items: widget.items.map((item) {
+          return BottomNavigationBarItem(
+            icon: _buildIcon(item.iconName) ?? const Icon(Icons.circle),
+            label: item.label,
+          );
+        }).toList(),
+      );
+    }
     return SizedBox(height: widget.height);
   }
 }
@@ -202,6 +253,7 @@ class _GtkScaffoldState extends State<GtkScaffold> with RouteAware {
   @override
   void initState() {
     super.initState();
+    if (!isNativeControlSupported) return;
     _ch.addListener(_handleMethodCall);
     _activeScaffolds.add(this);
     _syncWithNative();
@@ -210,6 +262,7 @@ class _GtkScaffoldState extends State<GtkScaffold> with RouteAware {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!isNativeControlSupported) return;
     final modalRoute = ModalRoute.of(context);
     if (modalRoute != null) {
       routeObserver.subscribe(this, modalRoute);
@@ -219,6 +272,7 @@ class _GtkScaffoldState extends State<GtkScaffold> with RouteAware {
   @override
   void didUpdateWidget(GtkScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!isNativeControlSupported) return;
     if (_activeScaffolds.isNotEmpty && _activeScaffolds.last == this) {
       _syncWithNative();
     }
@@ -226,13 +280,15 @@ class _GtkScaffoldState extends State<GtkScaffold> with RouteAware {
 
   @override
   void dispose() {
-    routeObserver.unsubscribe(this);
-    _ch.removeListener(_handleMethodCall);
-    _activeScaffolds.remove(this);
-    if (_activeScaffolds.isEmpty && !GtkNativeHeaderBar.hasActiveHeaderBar) {
-      _hideNative();
-    } else if (_activeScaffolds.isNotEmpty) {
-      _activeScaffolds.last._syncWithNative();
+    if (isNativeControlSupported) {
+      routeObserver.unsubscribe(this);
+      _ch.removeListener(_handleMethodCall);
+      _activeScaffolds.remove(this);
+      if (_activeScaffolds.isEmpty && !GtkNativeHeaderBar.hasActiveHeaderBar) {
+        _hideNative();
+      } else if (_activeScaffolds.isNotEmpty) {
+        _activeScaffolds.last._syncWithNative();
+      }
     }
     super.dispose();
   }
@@ -318,6 +374,21 @@ class _GtkScaffoldState extends State<GtkScaffold> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
+    if (!isNativeControlSupported) {
+      return Scaffold(
+        appBar: widget.title.isNotEmpty
+            ? GtkNativeHeaderBar(
+                title: widget.title,
+                subtitle: widget.subtitle,
+                showBackButton: widget.showBackButton,
+                onBack: widget.onBack,
+                actions: widget.headerActions,
+              )
+            : null,
+        bottomNavigationBar: widget.bottomNavigationBar,
+        body: widget.body,
+      );
+    }
     return widget.body;
   }
 }

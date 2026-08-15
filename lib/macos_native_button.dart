@@ -29,6 +29,7 @@ class _MacosNativeButtonState extends State<MacosNativeButton> with RouteAware {
   @override
   void initState() {
     super.initState();
+    if (!isNativeControlSupported) return;
     _buttonId = UniqueKey().toString();
     
     _channel.setMethodCallHandler((call) async {
@@ -48,6 +49,7 @@ class _MacosNativeButtonState extends State<MacosNativeButton> with RouteAware {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!isNativeControlSupported) return;
     final ModalRoute? route = ModalRoute.of(context);
     if (_modalRoute != route) {
       if (_modalRoute != null) routeObserver.unsubscribe(this);
@@ -57,7 +59,7 @@ class _MacosNativeButtonState extends State<MacosNativeButton> with RouteAware {
   }
 
   Future<void> _createNativeButton() async {
-    if (!mounted) return;
+    if (!mounted || !isNativeControlSupported) return;
     
     final RenderBox? renderBox = _key.currentContext?.findRenderObject() as RenderBox?;
     final position = renderBox?.localToGlobal(Offset.zero) ?? Offset.zero;
@@ -88,7 +90,7 @@ class _MacosNativeButtonState extends State<MacosNativeButton> with RouteAware {
   }
 
   void _updateNativePosition() {
-    if (!mounted || _buttonId == null) return;
+    if (!mounted || _buttonId == null || !isNativeControlSupported) return;
     final RenderBox? renderBox = _key.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox != null) {
       final position = renderBox.localToGlobal(Offset.zero);
@@ -101,7 +103,7 @@ class _MacosNativeButtonState extends State<MacosNativeButton> with RouteAware {
   }
 
   Future<void> _setNativeVisibility(bool visible) async {
-    if (_buttonId == null) return;
+    if (_buttonId == null || !isNativeControlSupported) return;
     try {
       await _channel.invokeMethod('setVisibility', {'id': _buttonId, 'visible': visible});
     } on PlatformException catch (_) {}
@@ -110,7 +112,7 @@ class _MacosNativeButtonState extends State<MacosNativeButton> with RouteAware {
   @override
   void dispose() {
     if (_modalRoute != null) routeObserver.unsubscribe(this);
-    if (_buttonId != null) {
+    if (_buttonId != null && isNativeControlSupported) {
       _channel.invokeMethod('removeButton', {'id': _buttonId});
     }
     super.dispose();
@@ -129,12 +131,16 @@ class _MacosNativeButtonState extends State<MacosNativeButton> with RouteAware {
   @override
   void didUpdateWidget(MacosNativeButton oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If the title changed, we might need to recreate or update the button.
-    // For simplicity, we assume title doesn't change here, or we could send an update command.
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!isNativeControlSupported) {
+      return ElevatedButton(
+        onPressed: widget.onPressed,
+        child: Text(widget.title),
+      );
+    }
     return NativePositionTracker(
       onPositionChanged: _updateNativePosition,
       child: SizedBox(

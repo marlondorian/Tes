@@ -1,6 +1,13 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+
+bool get isNativeControlSupported {
+  if (kIsWeb) return false;
+  return Platform.isMacOS || Platform.isLinux;
+}
 
 typedef NativeControlEventHandler = void Function(String method, Map<String, dynamic> arguments);
 

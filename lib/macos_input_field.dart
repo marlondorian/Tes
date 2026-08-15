@@ -30,14 +30,19 @@ class _MacosInputFieldState extends State<MacosInputField> with RouteAware {
   String? _inputId;
   Size? _nativeSize;
   ModalRoute? _modalRoute;
+  TextEditingController? _controller;
 
   final GlobalKey _key = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    _inputId = UniqueKey().toString();
+    if (!isNativeControlSupported) {
+      _controller = TextEditingController(text: widget.initialValue);
+      return;
+    }
 
+    _inputId = UniqueKey().toString();
     NativeControlChannel.registerListener(_inputId!, _handleNativeEvent);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,6 +53,7 @@ class _MacosInputFieldState extends State<MacosInputField> with RouteAware {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!isNativeControlSupported) return;
     final ModalRoute? route = ModalRoute.of(context);
     if (_modalRoute != route) {
       if (_modalRoute != null) routeObserver.unsubscribe(this);
@@ -57,7 +63,7 @@ class _MacosInputFieldState extends State<MacosInputField> with RouteAware {
   }
 
   Future<void> _createNativeInput() async {
-    if (!mounted || _inputId == null) return;
+    if (!mounted || _inputId == null || !isNativeControlSupported) return;
 
     final RenderBox? renderBox = _key.currentContext?.findRenderObject() as RenderBox?;
     final position = renderBox?.localToGlobal(Offset.zero) ?? Offset.zero;
@@ -103,7 +109,7 @@ class _MacosInputFieldState extends State<MacosInputField> with RouteAware {
   }
 
   void _updateNativePosition() {
-    if (!mounted || _inputId == null) return;
+    if (!mounted || _inputId == null || !isNativeControlSupported) return;
     final RenderBox? renderBox = _key.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox != null) {
       final position = renderBox.localToGlobal(Offset.zero);
@@ -120,7 +126,7 @@ class _MacosInputFieldState extends State<MacosInputField> with RouteAware {
   }
 
   Future<void> _setNativeVisibility(bool visible) async {
-    if (_inputId == null) return;
+    if (_inputId == null || !isNativeControlSupported) return;
     try {
       await NativeControlChannel.invokeMethod('setVisibility', {'id': _inputId, 'visible': visible});
     } catch (_) {}
@@ -128,8 +134,9 @@ class _MacosInputFieldState extends State<MacosInputField> with RouteAware {
 
   @override
   void dispose() {
+    _controller?.dispose();
     if (_modalRoute != null) routeObserver.unsubscribe(this);
-    if (_inputId != null) {
+    if (_inputId != null && isNativeControlSupported) {
       NativeControlChannel.invokeMethod('removeInput', {'id': _inputId});
       NativeControlChannel.unregisterListener(_inputId!);
     }
@@ -149,7 +156,25 @@ class _MacosInputFieldState extends State<MacosInputField> with RouteAware {
   @override
   Widget build(BuildContext context) {
     final width = widget.width ?? _nativeSize?.width ?? 200;
-    final height = widget.height ?? _nativeSize?.height ?? 24;
+    final height = widget.height ?? _nativeSize?.height ?? 34;
+
+    if (!isNativeControlSupported) {
+      return SizedBox(
+        width: width,
+        height: height,
+        child: TextField(
+          controller: _controller,
+          decoration: InputDecoration(
+            hintText: widget.placeholder,
+            border: const OutlineInputBorder(),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          ),
+          onChanged: widget.onInput,
+          onSubmitted: widget.onSubmit,
+        ),
+      );
+    }
+
     return NativePositionTracker(
       onPositionChanged: _updateNativePosition,
       child: SizedBox(

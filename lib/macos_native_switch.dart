@@ -26,6 +26,7 @@ class _MacosNativeSwitchState extends State<MacosNativeSwitch> with RouteAware {
   @override
   void initState() {
     super.initState();
+    if (!isNativeControlSupported) return;
     _switchId = UniqueKey().toString();
     NativeControlChannel.registerListener(_switchId!, _handleNativeMethodCall);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -36,6 +37,7 @@ class _MacosNativeSwitchState extends State<MacosNativeSwitch> with RouteAware {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!isNativeControlSupported) return;
     final ModalRoute? route = ModalRoute.of(context);
     if (_modalRoute != route) {
       if (_modalRoute != null) routeObserver.unsubscribe(this);
@@ -45,7 +47,7 @@ class _MacosNativeSwitchState extends State<MacosNativeSwitch> with RouteAware {
   }
 
   Future<void> _createNativeSwitch() async {
-    if (!mounted) return;
+    if (!mounted || !isNativeControlSupported) return;
 
     final renderBox = _key.currentContext?.findRenderObject() as RenderBox?;
     final position = renderBox?.localToGlobal(Offset.zero) ?? Offset.zero;
@@ -88,7 +90,7 @@ class _MacosNativeSwitchState extends State<MacosNativeSwitch> with RouteAware {
   }
 
   Future<void> _updateNativePosition() async {
-    if (!mounted || _switchId == null) return;
+    if (!mounted || _switchId == null || !isNativeControlSupported) return;
 
     final renderBox = _key.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox != null) {
@@ -102,7 +104,7 @@ class _MacosNativeSwitchState extends State<MacosNativeSwitch> with RouteAware {
   }
 
   Future<void> _setNativeVisibility(bool visible) async {
-    if (_switchId == null) return;
+    if (_switchId == null || !isNativeControlSupported) return;
     try {
       await NativeControlChannel.invokeMethod('setVisibility', {
         'id': _switchId,
@@ -112,7 +114,7 @@ class _MacosNativeSwitchState extends State<MacosNativeSwitch> with RouteAware {
   }
 
   Future<void> _updateNativeValue() async {
-    if (!mounted || _switchId == null) return;
+    if (!mounted || _switchId == null || !isNativeControlSupported) return;
 
     await NativeControlChannel.invokeMethod('updateSwitchValue', {
       'id': _switchId,
@@ -129,14 +131,14 @@ class _MacosNativeSwitchState extends State<MacosNativeSwitch> with RouteAware {
   }
 
   Future<void> _removeNativeSwitch() async {
-    if (_switchId == null) return;
+    if (_switchId == null || !isNativeControlSupported) return;
     await NativeControlChannel.invokeMethod('removeSwitch', {'id': _switchId});
   }
 
   @override
   void dispose() {
     if (_modalRoute != null) routeObserver.unsubscribe(this);
-    if (_switchId != null) {
+    if (_switchId != null && isNativeControlSupported) {
       _removeNativeSwitch();
       NativeControlChannel.unregisterListener(_switchId!);
     }
@@ -155,6 +157,12 @@ class _MacosNativeSwitchState extends State<MacosNativeSwitch> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
+    if (!isNativeControlSupported) {
+      return Switch(
+        value: widget.value,
+        onChanged: widget.onChanged,
+      );
+    }
     return NativePositionTracker(
       onPositionChanged: _updateNativePosition,
       child: SizedBox(

@@ -1,9 +1,10 @@
-import 'dart:io';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'gtk_scaffold.dart';
 import 'gtk_scaffold_channel.dart';
+import 'native_control_channel.dart';
 import 'route_observer.dart';
 
 /// A [PreferredSizeWidget] that matches the height and configures the native GTK HeaderBar
@@ -72,8 +73,14 @@ class GtkNativeHeaderBar extends StatefulWidget implements PreferredSizeWidget {
     this.backgroundColor,
     this.defaultHeight = 47.0,
   });
+
   @override
-  Size get preferredSize => Size.fromHeight(Platform.isMacOS ? 52.0 : 47.0);
+  Size get preferredSize {
+    if (!isNativeControlSupported) {
+      return const Size.fromHeight(kToolbarHeight);
+    }
+    return Size.fromHeight(Platform.isMacOS ? 52.0 : 47.0);
+  }
 
   static bool get hasActiveHeaderBar =>
       _GtkNativeHeaderBarState.hasActiveHeaderBar;
@@ -96,6 +103,7 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
   @override
   void initState() {
     super.initState();
+    if (!isNativeControlSupported) return;
     _height = Platform.isMacOS ? 52.0 : 47.0;
     _ch.addListener(_handleMethodCall);
     _activeInstances.add(this);
@@ -106,6 +114,7 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!isNativeControlSupported) return;
     final modalRoute = ModalRoute.of(context);
     if (modalRoute != null) {
       routeObserver.subscribe(this, modalRoute);
@@ -115,6 +124,7 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
   @override
   void didUpdateWidget(GtkNativeHeaderBar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!isNativeControlSupported) return;
     if (_activeInstances.isNotEmpty && _activeInstances.last == this) {
       _syncWithNative();
     }
@@ -122,13 +132,15 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
 
   @override
   void dispose() {
-    routeObserver.unsubscribe(this);
-    _ch.removeListener(_handleMethodCall);
-    _activeInstances.remove(this);
-    if (_activeInstances.isEmpty && !GtkScaffold.hasActiveScaffold) {
-      _hideNative();
-    } else if (_activeInstances.isNotEmpty) {
-      _activeInstances.last._syncWithNative();
+    if (isNativeControlSupported) {
+      routeObserver.unsubscribe(this);
+      _ch.removeListener(_handleMethodCall);
+      _activeInstances.remove(this);
+      if (_activeInstances.isEmpty && !GtkScaffold.hasActiveScaffold) {
+        _hideNative();
+      } else if (_activeInstances.isNotEmpty) {
+        _activeInstances.last._syncWithNative();
+      }
     }
     super.dispose();
   }
@@ -238,11 +250,92 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
     }
   }
 
+  Widget? _buildIcon(String? iconName) {
+    if (iconName == null || iconName.isEmpty) return null;
+    switch (iconName) {
+      case "go-previous-symbolic":
+      case "pan-start-symbolic":
+        return const Icon(Icons.arrow_back);
+      case "go-next-symbolic":
+      case "pan-end-symbolic":
+        return const Icon(Icons.arrow_forward);
+      case "view-refresh-symbolic":
+        return const Icon(Icons.refresh);
+      case "dialog-information-symbolic":
+        return const Icon(Icons.info_outline);
+      case "go-home-symbolic":
+        return const Icon(Icons.home);
+      case "edit-symbolic":
+        return const Icon(Icons.edit);
+      case "emblem-system-symbolic":
+      case "preferences-system-symbolic":
+        return const Icon(Icons.settings);
+      case "document-open-symbolic":
+        return const Icon(Icons.insert_drive_file);
+      case "folder-symbolic":
+        return const Icon(Icons.folder);
+      case "list-add-symbolic":
+        return const Icon(Icons.add);
+      case "user-trash-symbolic":
+        return const Icon(Icons.delete);
+      default:
+        return const Icon(Icons.widgets);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // The actual GTK widget is rendered natively.
-    // This is a transparent spacer reserving the exact height so the Flutter Scaffold
-    // body starts cleanly below the native header bar.
-    return Container(color: Colors.amber, height: _height);
+    if (!isNativeControlSupported) {
+      Widget? leadingWidget;
+      if (widget.leading != null) {
+        leadingWidget = IconButton(
+          icon: _buildIcon(widget.leading!.iconName) ??
+              (widget.leading!.label != null
+                  ? Text(widget.leading!.label!)
+                  : const Icon(Icons.chevron_left)),
+          tooltip: widget.leading!.label,
+          onPressed: widget.leading!.onPressed,
+        );
+      } else if (widget.showBackButton) {
+        leadingWidget = IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: widget.onBack ?? () => Navigator.maybePop(context),
+        );
+      }
+
+      final actionsWidgets = <Widget>[];
+      if (widget.actions != null) {
+        for (final action in widget.actions!) {
+          actionsWidgets.add(
+            IconButton(
+              icon: _buildIcon(action.iconName) ??
+                  (action.label != null
+                      ? Text(action.label!)
+                      : const Icon(Icons.widgets)),
+              tooltip: action.label,
+              onPressed: action.onPressed,
+            ),
+          );
+        }
+      }
+
+      return AppBar(
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(widget.title),
+            if (widget.subtitle != null && widget.subtitle!.isNotEmpty)
+              Text(widget.subtitle!, style: Theme.of(context).textTheme.labelSmall),
+          ],
+        ),
+        centerTitle: true,
+        leading: leadingWidget,
+        actions: actionsWidgets,
+        backgroundColor: widget.backgroundColor,
+      );
+    }
+
+    return SizedBox(height: _height);
   }
 }
