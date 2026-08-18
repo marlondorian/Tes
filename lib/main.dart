@@ -5,8 +5,11 @@ import 'macos_native_button.dart';
 import 'macos_native_switch.dart';
 import 'macos_input_field.dart';
 import 'route_observer.dart';
+import 'home_sections_page.dart';
+import 'search_widget.dart';
 
-void main() {
+void main() async {
+  await ytmusic.initialize(cookies: "LOGIN_INFO=AFmmF2swRQIgUpMB6cxB70QIoSIeFRF6leR_scBRaT37ptRhLYzT9WgCIQDZwaYDbRwuViztQrjC3fqWXokEk2XPMpK4JE-o6KurOw:QUQ3MjNmd29KelBKU25wbTVCU0pIWHJpUE80ZkdqTDM4Ny1Jcmp4UGFDd2NHTUx5Z1RSSXlWaGwtNnVkZ2VOdWpOa1djWVpyczM5MlBoeGJTNy1QOTJHMDBPVzNfazRPOVllRHAwZGI3bUFJV2xaaW10d1BtLTFaRVZYdW1kUzNfeUdpOUhCal9JOGtKQ2RIeXJaYzB5WEtzUmp6Mk5jQlZ3");
   runApp(const MyApp());
 }
 
@@ -75,8 +78,7 @@ class _MyHomePageState extends State<MyHomePage> {
         : 'Configuration Options';
 
     return Scaffold(
-      // extendBodyBehindAppBar: true,
-      extendBody: true,
+      extendBodyBehindAppBar: true,
 
       bottomNavigationBar: GtkBottomNavigationBar(
         currentIndex: _currentTabIndex,
@@ -94,6 +96,11 @@ class _MyHomePageState extends State<MyHomePage> {
           GtkBottomNavigationItem(
             id: "1",
             label: 'Controls',
+            iconName: 'edit-symbolic',
+          ),
+           GtkBottomNavigationItem(
+            id: "2",
+            label: 'Music',
             iconName: 'edit-symbolic',
           ),
         ],
@@ -284,42 +291,73 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
         // Tab 2: Settings,
-        2 => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.desktop_windows,
-                  size: 64,
-                  color: Colors.deepPurple,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Welcome to GTK Native Scaffold',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'The top bar (GtkHeaderBar) is a native GTK widget!',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Counter value: $_counter',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: _incrementCounter,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Increment Counter'),
-                ),
-              ],
-            ),
+        2 => Scaffold(
+          body: Center(
+          // Center is a layout widget. It takes a single child and positions it
+          // in the middle of the parent.
+          child: Column(
+            // Column is also a layout widget. It takes a list of children and
+            // arranges them vertically. By default, it sizes itself to fit its
+            // children horizontally, and tries to be as tall as its parent.
+            //
+            // Column has various properties to control how it sizes itself and
+            // how it positions its children. Here we use mainAxisAlignment to
+            // center the children vertically; the main axis here is the vertical
+            // axis because Columns are vertical (the cross axis would be
+            // horizontal).
+            //
+            // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
+            // action in the IDE, or press "p" in the console), to see the
+            // wireframe for each widget.
+            mainAxisAlignment: .start,
+            children: [
+              const Text('You have pushed the button this many times:'),
+              Text(
+                '$_counter',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const HomeSectionsPage(),
+                    ),
+                  );
+                },
+                child: const Text('Ver secciones de la página principal'),
+              ),
+              const SizedBox(height: 16),
+              const Expanded(child: SongSearchWidget()),
+            ],
           ),
+                ),
+                
+
+                floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            onPressed: _incrementCounter,
+            tooltip: 'Increment',
+            child: const Icon(Icons.add),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            onPressed: () {
+              if (audioPlayer.playing) {
+                audioPlayer.pause();
+              } else {
+                audioPlayer.play();
+              }
+            },
+            tooltip: 'Play/Pause',
+            child: const Icon(Icons.play_arrow),
+          ),
+        ],
+      ),
         ),
+      
         // Tab 3: Settings,
         3 => Center(
           child: Padding(
