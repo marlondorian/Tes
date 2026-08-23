@@ -17,6 +17,8 @@ class NativeControlManager {
   ~NativeControlManager();
 
   void SetupChannels(FlBinaryMessenger* messenger);
+  void GrabFlutterFocus();
+  void UnfocusAllInputs();
 
  private:
   struct WidgetInfo {
@@ -25,6 +27,7 @@ class NativeControlManager {
     NativeControlManager* manager;
     gulong signal_handler_id{0};
     gulong activate_handler_id{0};
+    gulong focus_out_handler_id{0};
     bool ignore_signals{false};
   };
 
@@ -106,6 +109,7 @@ class NativeControlManager {
   static void OnSwitchActiveChanged(GObject* object, GParamSpec* pspec, gpointer user_data);
   static void OnEntryChanged(GtkEditable* editable, gpointer user_data);
   static void OnEntryActivate(GtkEntry* entry, gpointer user_data);
+  static gboolean OnEntryFocusOut(GtkWidget* widget, GdkEventFocus* event, gpointer user_data);
   static gboolean OnWidgetScrollEvent(GtkWidget* widget, GdkEventScroll* event, gpointer user_data);
 
   static void OnHeaderBackClicked(GtkButton* button, gpointer user_data);

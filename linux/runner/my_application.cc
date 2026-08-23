@@ -5,6 +5,7 @@
 #include <gdk/gdkx.h>
 #endif
 #include <cmath>
+#include <clocale>
 
 #if __has_include(<handy.h>)
 #include <handy.h>
@@ -55,8 +56,44 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Helper to check if a GTK widget or any of its ancestors is a text entry/editable widget
+static bool is_entry_widget(GtkWidget* widget) {
+  while (widget != nullptr) {
+    if (GTK_IS_ENTRY(widget) || GTK_IS_EDITABLE(widget)) {
+      return true;
+    }
+    widget = gtk_widget_get_parent(widget);
+  }
+  return false;
+}
+
+// Called when mouse is clicked anywhere in the window. If the click target is not a GTK native text input,
+// keyboard focus is immediately restored to FlView and any active GTK native input loses focus.
+static gboolean on_window_button_press(GtkWidget* widget, GdkEventButton* event, gpointer user_data) {
+  GtkWidget* fl_view = GTK_WIDGET(user_data != nullptr ? user_data : widget);
+  if (fl_view != nullptr) {
+    GtkWidget* target = gtk_get_event_widget(reinterpret_cast<GdkEvent*>(event));
+    if (!is_entry_widget(target)) {
+      GtkWidget* toplevel = gtk_widget_get_toplevel(fl_view);
+      if (toplevel != nullptr && GTK_IS_WINDOW(toplevel)) {
+        GtkWidget* current_focus = gtk_window_get_focus(GTK_WINDOW(toplevel));
+        if (current_focus != nullptr && is_entry_widget(current_focus)) {
+          if (GTK_IS_EDITABLE(current_focus)) {
+            gtk_editable_select_region(GTK_EDITABLE(current_focus), 0, 0);
+          }
+          gtk_window_set_focus(GTK_WINDOW(toplevel), nullptr);
+        }
+      }
+      gtk_widget_set_can_focus(fl_view, TRUE);
+      gtk_widget_grab_focus(fl_view);
+    }
+  }
+  return FALSE;
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
+  std::setlocale(LC_NUMERIC, "C");
   MyApplication* self = MY_APPLICATION(application);
 
   // HdyWindow is a CSD window: the WM does NOT draw a separate titlebar.
@@ -97,6 +134,9 @@ static void my_application_activate(GApplication* application) {
       project, self->dart_entrypoint_arguments);
 
   FlView* view = fl_view_new(project);
+  gtk_widget_set_can_focus(GTK_WIDGET(view), TRUE);
+  g_signal_connect(view, "button-press-event", G_CALLBACK(on_window_button_press), view);
+  g_signal_connect(view, "button-release-event", G_CALLBACK(on_window_button_press), view);
   GdkRGBA background_color;
   // Transparent background so Flutter doesn't paint opaque black over rounded corners
   gdk_rgba_parse(&background_color, "#00000000");
@@ -107,6 +147,8 @@ static void my_application_activate(GApplication* application) {
   GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
   gtk_header_bar_set_title(header_bar, "macos_native_widgets");
   gtk_header_bar_set_show_close_button(header_bar, TRUE);
+  gtk_widget_set_can_focus(GTK_WIDGET(header_bar), FALSE);
+  gtk_widget_set_focus_on_click(GTK_WIDGET(header_bar), FALSE);
   // Note: window dragging is handled by HdyWindowHandle wrapping the header_bar below.
 
   GtkWidget* main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -114,6 +156,8 @@ static void my_application_activate(GApplication* application) {
   GtkWidget* overlay = gtk_overlay_new();
   GtkWidget* fixed = gtk_fixed_new();
   GtkWidget* action_bar = gtk_action_bar_new();
+  gtk_widget_set_can_focus(GTK_WIDGET(action_bar), FALSE);
+  gtk_widget_set_focus_on_click(GTK_WIDGET(action_bar), FALSE);
 
   gtk_container_add(GTK_CONTAINER(overlay), GTK_WIDGET(view));
 
@@ -143,6 +187,9 @@ static void my_application_activate(GApplication* application) {
   // Connect Cairo rounded corner clipping signal
   g_signal_connect(GTK_WIDGET(view), "draw", G_CALLBACK(on_window_content_draw), NULL);
   g_signal_connect(overlay, "draw", G_CALLBACK(on_window_content_draw), NULL);
+  g_signal_connect(window, "button-press-event", G_CALLBACK(on_window_button_press), view);
+  g_signal_connect(overlay, "button-press-event", G_CALLBACK(on_window_button_press), view);
+  g_signal_connect(fixed, "button-press-event", G_CALLBACK(on_window_button_press), view);
 
   gtk_box_pack_start(GTK_BOX(main_box), overlay, TRUE, TRUE, 0);
 
@@ -205,6 +252,7 @@ static void my_application_startup(GApplication* application) {
   // Perform any actions required at application startup.
 
   G_APPLICATION_CLASS(my_application_parent_class)->startup(application);
+  std::setlocale(LC_NUMERIC, "C");
 }
 
 // Implements GApplication::shutdown.

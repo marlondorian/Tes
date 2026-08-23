@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:just_audio_background/just_audio_background.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'gtk_scaffold.dart';
 import 'gtk_native_header_bar.dart';
 import 'macos_native_button.dart';
@@ -7,9 +9,37 @@ import 'macos_input_field.dart';
 import 'route_observer.dart';
 import 'home_sections_page.dart';
 import 'search_widget.dart';
+import 'audio_controller.dart';
+
+// void _ensureNumericLocaleC() {
+//   if (Platform.isLinux || Platform.isAndroid || Platform.isMacOS) {
+//     try {
+//       final DynamicLibrary libc = Platform.isLinux
+//           ? DynamicLibrary.open('libc.so.6')
+//           : DynamicLibrary.process();
+//       final setlocale = libc.lookupFunction<
+//           Pointer<Char> Function(Int32 category, Pointer<Utf8> locale),
+//           Pointer<Char> Function(int category, Pointer<Utf8> locale)>('setlocale');
+//       final cLocale = 'C'.toNativeUtf8();
+//       // LC_NUMERIC = 1 in POSIX standard header locale.h
+//       setlocale(1, cLocale);
+//       calloc.free(cLocale);
+//     } catch (_) {}
+//   }
+// }
 
 void main() async {
-  await ytmusic.initialize(cookies: "LOGIN_INFO=AFmmF2swRQIgUpMB6cxB70QIoSIeFRF6leR_scBRaT37ptRhLYzT9WgCIQDZwaYDbRwuViztQrjC3fqWXokEk2XPMpK4JE-o6KurOw:QUQ3MjNmd29KelBKU25wbTVCU0pIWHJpUE80ZkdqTDM4Ny1Jcmp4UGFDd2NHTUx5Z1RSSXlWaGwtNnVkZ2VOdWpOa1djWVpyczM5MlBoeGJTNy1QOTJHMDBPVzNfazRPOVllRHAwZGI3bUFJV2xaaW10d1BtLTFaRVZYdW1kUzNfeUdpOUhCal9JOGtKQ2RIeXJaYzB5WEtzUmp6Mk5jQlZ3");
+  WidgetsFlutterBinding.ensureInitialized();
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+    androidNotificationChannelName: 'Audio playback',
+    androidNotificationOngoing: true,
+  );
+  JustAudioMediaKit.ensureInitialized();
+  await ytmusic.initialize(
+    cookies:
+        "LOGIN_INFO=AFmmF2swRQIgUpMB6cxB70QIoSIeFRF6leR_scBRaT37ptRhLYzT9WgCIQDZwaYDbRwuViztQrjC3fqWXokEk2XPMpK4JE-o6KurOw:QUQ3MjNmd29KelBKU25wbTVCU0pIWHJpUE80ZkdqTDM4Ny1Jcmp4UGFDd2NHTUx5Z1RSSXlWaGwtNnVkZ2VOdWpOa1djWVpyczM5MlBoeGJTNy1QOTJHMDBPVzNfazRPOVllRHAwZGI3bUFJV2xaaW10d1BtLTFaRVZYdW1kUzNfeUdpOUhCal9JOGtKQ2RIeXJaYzB5WEtzUmp6Mk5jQlZ3",
+  );
   runApp(const MyApp());
 }
 
@@ -98,7 +128,7 @@ class _MyHomePageState extends State<MyHomePage> {
             label: 'Controls',
             iconName: 'edit-symbolic',
           ),
-           GtkBottomNavigationItem(
+          GtkBottomNavigationItem(
             id: "2",
             label: 'Music',
             iconName: 'edit-symbolic',
@@ -293,71 +323,75 @@ class _MyHomePageState extends State<MyHomePage> {
         // Tab 2: Settings,
         2 => Scaffold(
           body: Center(
-          // Center is a layout widget. It takes a single child and positions it
-          // in the middle of the parent.
-          child: Column(
-            // Column is also a layout widget. It takes a list of children and
-            // arranges them vertically. By default, it sizes itself to fit its
-            // children horizontally, and tries to be as tall as its parent.
-            //
-            // Column has various properties to control how it sizes itself and
-            // how it positions its children. Here we use mainAxisAlignment to
-            // center the children vertically; the main axis here is the vertical
-            // axis because Columns are vertical (the cross axis would be
-            // horizontal).
-            //
-            // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-            // action in the IDE, or press "p" in the console), to see the
-            // wireframe for each widget.
-            mainAxisAlignment: .start,
+            // Center is a layout widget. It takes a single child and positions it
+            // in the middle of the parent.
+            child: Column(
+              // Column is also a layout widget. It takes a list of children and
+              // arranges them vertically. By default, it sizes itself to fit its
+              // children horizontally, and tries to be as tall as its parent.
+              //
+              // Column has various properties to control how it sizes itself and
+              // how it positions its children. Here we use mainAxisAlignment to
+              // center the children vertically; the main axis here is the vertical
+              // axis because Columns are vertical (the cross axis would be
+              // horizontal).
+              //
+              // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
+              // action in the IDE, or press "p" in the console), to see the
+              // wireframe for each widget.
+              mainAxisAlignment: .start,
+              children: [
+                const Text('You have pushed the button this many times:'),
+                Text(
+                  '$_counter',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const HomeSectionsPage(),
+                      ),
+                    );
+                  },
+                  child: const Text('Ver secciones de la página principal'),
+                ),
+                const SizedBox(height: 16),
+                const Expanded(child: SongSearchWidget()),
+              ],
+            ),
+          ),
+
+          floatingActionButton: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('You have pushed the button this many times:'),
-              Text(
-                '$_counter',
-                style: Theme.of(context).textTheme.headlineMedium,
+              FloatingActionButton(
+                onPressed: _incrementCounter,
+                tooltip: 'Increment',
+                child: const Icon(Icons.add),
               ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const HomeSectionsPage(),
+              const SizedBox(width: 12),
+              ListenableBuilder(
+                listenable: audioController,
+                builder: (context, _) {
+                  return FloatingActionButton(
+                    onPressed: () {
+                      audioController.togglePlayPause();
+                    },
+                    tooltip: 'Play/Pause',
+                    child: Icon(
+                      audioController.isPlaying
+                          ? Icons.pause
+                          : Icons.play_arrow,
                     ),
                   );
                 },
-                child: const Text('Ver secciones de la página principal'),
               ),
-              const SizedBox(height: 16),
-              const Expanded(child: SongSearchWidget()),
             ],
           ),
-                ),
-                
-
-                floatingActionButton: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton(
-            onPressed: _incrementCounter,
-            tooltip: 'Increment',
-            child: const Icon(Icons.add),
-          ),
-          const SizedBox(width: 12),
-          FloatingActionButton(
-            onPressed: () {
-              if (audioPlayer.playing) {
-                audioPlayer.pause();
-              } else {
-                audioPlayer.play();
-              }
-            },
-            tooltip: 'Play/Pause',
-            child: const Icon(Icons.play_arrow),
-          ),
-        ],
-      ),
         ),
-      
+
         // Tab 3: Settings,
         3 => Center(
           child: Padding(

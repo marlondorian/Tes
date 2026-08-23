@@ -94,6 +94,13 @@ void NativeControlManager::SetupChannels(FlBinaryMessenger* messenger) {
   AttachScrollHandler(GTK_WIDGET(fixed_container_));
 }
 
+void NativeControlManager::GrabFlutterFocus() {
+  if (fl_view_widget_ != nullptr && GTK_IS_WIDGET(fl_view_widget_)) {
+    gtk_widget_set_can_focus(fl_view_widget_, TRUE);
+    gtk_widget_grab_focus(fl_view_widget_);
+  }
+}
+
 void NativeControlManager::AttachScrollHandler(GtkWidget* widget) {
   if (widget == nullptr) return;
   gtk_widget_add_events(widget, GDK_SCROLL_MASK | GDK_SMOOTH_SCROLL_MASK);
@@ -283,6 +290,8 @@ FlMethodResponse* NativeControlManager::HandleCreateButton(FlValue* args) {
   }
 
   GtkWidget* button_widget = gtk_button_new_with_label(title.c_str());
+  gtk_widget_set_can_focus(button_widget, FALSE);
+  gtk_widget_set_focus_on_click(button_widget, FALSE);
   auto info = std::make_shared<WidgetInfo>();
   info->id = id;
   info->widget = button_widget;
@@ -342,6 +351,8 @@ void NativeControlManager::OnButtonClicked(GtkButton* button, gpointer user_data
   auto* info = static_cast<WidgetInfo*>(user_data);
   if (info == nullptr || info->manager == nullptr) return;
 
+  info->manager->GrabFlutterFocus();
+
   g_autoptr(FlValue) args = fl_value_new_map();
   fl_value_set_string_take(args, "id", fl_value_new_string(info->id.c_str()));
 
@@ -381,6 +392,8 @@ FlMethodResponse* NativeControlManager::HandleCreateSwitch(FlValue* args) {
   }
 
   GtkWidget* switch_widget = gtk_switch_new();
+  gtk_widget_set_can_focus(switch_widget, FALSE);
+  gtk_widget_set_focus_on_click(switch_widget, FALSE);
   gtk_switch_set_active(GTK_SWITCH(switch_widget), value);
 
   auto info = std::make_shared<WidgetInfo>();
@@ -431,6 +444,8 @@ FlMethodResponse* NativeControlManager::HandleRemoveSwitch(FlValue* args) {
 void NativeControlManager::OnSwitchActiveChanged(GObject* object, GParamSpec* pspec, gpointer user_data) {
   auto* info = static_cast<WidgetInfo*>(user_data);
   if (info == nullptr || info->manager == nullptr || info->ignore_signals) return;
+
+  info->manager->GrabFlutterFocus();
 
   gboolean active = gtk_switch_get_active(GTK_SWITCH(object));
 
@@ -494,6 +509,7 @@ FlMethodResponse* NativeControlManager::HandleCreateInput(FlValue* args) {
 
   info->signal_handler_id = g_signal_connect(GTK_EDITABLE(entry_widget), "changed", G_CALLBACK(OnEntryChanged), info.get());
   info->activate_handler_id = g_signal_connect(GTK_ENTRY(entry_widget), "activate", G_CALLBACK(OnEntryActivate), info.get());
+  info->focus_out_handler_id = g_signal_connect(entry_widget, "focus-out-event", G_CALLBACK(OnEntryFocusOut), info.get());
   AttachScrollHandler(entry_widget);
 
   inputs_[id] = info;
@@ -542,6 +558,11 @@ void NativeControlManager::OnEntryActivate(GtkEntry* entry, gpointer user_data) 
   auto* info = static_cast<WidgetInfo*>(user_data);
   if (info == nullptr || info->manager == nullptr || info->ignore_signals) return;
 
+  if (GTK_IS_EDITABLE(entry)) {
+    gtk_editable_select_region(GTK_EDITABLE(entry), 0, 0);
+  }
+  info->manager->GrabFlutterFocus();
+
   const gchar* text = gtk_entry_get_text(entry);
 
   g_autoptr(FlValue) args = fl_value_new_map();
@@ -552,6 +573,17 @@ void NativeControlManager::OnEntryActivate(GtkEntry* entry, gpointer user_data) 
                                   "onSubmit",
                                   args,
                                   nullptr, nullptr, nullptr);
+}
+
+gboolean NativeControlManager::OnEntryFocusOut(GtkWidget* widget, GdkEventFocus* event, gpointer user_data) {
+  auto* info = static_cast<WidgetInfo*>(user_data);
+  if (info != nullptr && info->manager != nullptr) {
+    if (GTK_IS_EDITABLE(widget)) {
+      gtk_editable_select_region(GTK_EDITABLE(widget), 0, 0);
+    }
+    info->manager->GrabFlutterFocus();
+  }
+  return FALSE;
 }
 
 // ---------------------- COMMON POSITION & VISIBILITY ----------------------
@@ -620,6 +652,8 @@ FlMethodResponse* NativeControlManager::HandleUpdateHeaderBar(FlValue* args) {
   if (show_back) {
     if (back_button_ == nullptr) {
       back_button_ = gtk_button_new_from_icon_name("go-previous-symbolic", GTK_ICON_SIZE_BUTTON);
+      gtk_widget_set_can_focus(back_button_, FALSE);
+      gtk_widget_set_focus_on_click(back_button_, FALSE);
       g_signal_connect(back_button_, "clicked", G_CALLBACK(OnHeaderBackClicked), this);
       gtk_header_bar_pack_start(header_bar_, back_button_);
     }
@@ -649,6 +683,8 @@ FlMethodResponse* NativeControlManager::HandleSetHeaderBarVisibility(FlValue* ar
 void NativeControlManager::OnHeaderBackClicked(GtkButton* button, gpointer user_data) {
   auto* self = static_cast<NativeControlManager*>(user_data);
   if (self == nullptr || self->scaffold_channel_ == nullptr) return;
+
+  self->GrabFlutterFocus();
 
   fl_method_channel_invoke_method(self->scaffold_channel_,
                                   "onHeaderBack",
@@ -693,6 +729,8 @@ FlMethodResponse* NativeControlManager::HandleSetHeaderActions(FlValue* args) {
     } else {
       btn = gtk_button_new();
     }
+    gtk_widget_set_can_focus(btn, FALSE);
+    gtk_widget_set_focus_on_click(btn, FALSE);
 
     auto info = std::make_shared<HeaderActionInfo>();
     info->id = id;
@@ -716,6 +754,8 @@ FlMethodResponse* NativeControlManager::HandleSetHeaderActions(FlValue* args) {
 void NativeControlManager::OnHeaderActionClicked(GtkButton* button, gpointer user_data) {
   auto* info = static_cast<HeaderActionInfo*>(user_data);
   if (info == nullptr || info->manager == nullptr || info->manager->scaffold_channel_ == nullptr) return;
+
+  info->manager->GrabFlutterFocus();
 
   g_autoptr(FlValue) args = fl_value_new_map();
   fl_value_set_string_take(args, "id", fl_value_new_string(info->id.c_str()));
@@ -791,6 +831,8 @@ FlMethodResponse* NativeControlManager::HandleSetupBottomNav(FlValue* args) {
     } else {
       btn = gtk_button_new_with_label(label.c_str());
     }
+    gtk_widget_set_can_focus(btn, FALSE);
+    gtk_widget_set_focus_on_click(btn, FALSE);
 
     auto info = std::make_shared<BottomNavItemInfo>();
     info->id = id;
@@ -826,6 +868,8 @@ void NativeControlManager::UpdateBottomNavStyles() {
 void NativeControlManager::OnBottomNavItemClicked(GtkButton* button, gpointer user_data) {
   auto* info = static_cast<BottomNavItemInfo*>(user_data);
   if (info == nullptr || info->manager == nullptr || info->manager->scaffold_channel_ == nullptr) return;
+
+  info->manager->GrabFlutterFocus();
 
   info->manager->current_bottom_nav_index_ = info->index;
   info->manager->UpdateBottomNavStyles();
