@@ -428,7 +428,7 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
                   item.tabs[index],
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: FontWeight.w600,
                     color: isSelected ? Colors.white : Colors.white70,
                   ),
                 ),

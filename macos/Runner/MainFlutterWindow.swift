@@ -255,6 +255,7 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
             let placeholder = action["placeholder"] as? String ?? "Search..."
             let val = action["value"] as? String ?? ""
             let searchField = NSSearchField(frame: NSRect(x: 0, y: 0, width: 220, height: 28))
+            searchField.identifier = NSUserInterfaceItemIdentifier(idStr)
             searchField.placeholderString = placeholder
             searchField.stringValue = val
             searchField.target = self
@@ -267,6 +268,7 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
             let tabs = action["tabs"] as? [String] ?? []
             let selectedIndex = action["selectedIndex"] as? Int ?? 0
             let segControl = NSSegmentedControl()
+            segControl.identifier = NSUserInterfaceItemIdentifier(idStr)
             segControl.segmentCount = tabs.count
             segControl.trackingMode = .selectOne
             for (i, tStr) in tabs.enumerated() {
@@ -331,11 +333,13 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
     }
 
     @objc private func onHeaderSearchSubmitted(_ sender: NSSearchField) {
-        scaffoldChannel?.invokeMethod("onHeaderSearchSubmitted", arguments: ["id": "search", "text": sender.stringValue])
+        let itemId = sender.identifier?.rawValue ?? "search"
+        scaffoldChannel?.invokeMethod("onHeaderSearchSubmitted", arguments: ["id": itemId, "text": sender.stringValue])
     }
 
     @objc private func onHeaderTabChanged(_ sender: NSSegmentedControl) {
-        scaffoldChannel?.invokeMethod("onHeaderTabSelected", arguments: ["id": "tabbar", "index": sender.selectedSegment])
+        let itemId = sender.identifier?.rawValue ?? "tabbar"
+        scaffoldChannel?.invokeMethod("onHeaderTabSelected", arguments: ["id": itemId, "index": sender.selectedSegment])
     }
 
     // MARK: - Bottom Navigation

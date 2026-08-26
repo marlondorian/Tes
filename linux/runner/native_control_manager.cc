@@ -710,6 +710,67 @@ FlMethodResponse* NativeControlManager::HandleSetHeaderActions(FlValue* args) {
     return FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   }
 
+  if (args == nullptr || fl_value_get_type(args) != FL_VALUE_TYPE_LIST) {
+    for (auto& item : header_actions_) {
+      if (item->widget != nullptr) {
+        gtk_widget_destroy(item->widget);
+      }
+    }
+    header_actions_.clear();
+    return FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  }
+
+  size_t count = fl_value_get_length(args);
+
+  // Check if we can update existing widgets in-place (e.g., updating selected tab index)
+  bool can_update_in_place = !header_actions_.empty() && count > 0;
+  if (can_update_in_place) {
+    for (size_t i = 0; i < count; ++i) {
+      FlValue* item_val = fl_value_get_list_value(args, i);
+      if (item_val == nullptr || fl_value_get_type(item_val) != FL_VALUE_TYPE_MAP) continue;
+      std::string id = get_string_val(item_val, "id");
+      std::string type = get_string_val(item_val, "type");
+      if (type.empty()) type = "action";
+
+      bool found = false;
+      for (const auto& existing : header_actions_) {
+        if (existing->id == id && existing->type == type) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        can_update_in_place = false;
+        break;
+      }
+    }
+  }
+
+  if (can_update_in_place) {
+    for (size_t i = 0; i < count; ++i) {
+      FlValue* item_val = fl_value_get_list_value(args, i);
+      if (item_val == nullptr || fl_value_get_type(item_val) != FL_VALUE_TYPE_MAP) continue;
+      std::string id = get_string_val(item_val, "id");
+      std::string type = get_string_val(item_val, "type");
+      if (type.empty()) type = "action";
+
+      if (type == "tabbar") {
+        int selected_index = static_cast<int>(get_double_val(item_val, "selectedIndex"));
+        for (auto& existing : header_actions_) {
+          if (existing->id == id && existing->type == "tabbar" && existing->widget != nullptr) {
+            bool is_selected = (existing->tab_index == selected_index);
+            if (GTK_IS_TOGGLE_BUTTON(existing->widget)) {
+              g_signal_handlers_block_by_func(existing->widget, (gpointer)OnHeaderTabClicked, existing.get());
+              gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(existing->widget), is_selected);
+              g_signal_handlers_unblock_by_func(existing->widget, (gpointer)OnHeaderTabClicked, existing.get());
+            }
+          }
+        }
+      }
+    }
+    return FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  }
+
   for (auto& item : header_actions_) {
     if (item->widget != nullptr) {
       gtk_widget_destroy(item->widget);
@@ -717,11 +778,6 @@ FlMethodResponse* NativeControlManager::HandleSetHeaderActions(FlValue* args) {
   }
   header_actions_.clear();
 
-  if (args == nullptr || fl_value_get_type(args) != FL_VALUE_TYPE_LIST) {
-    return FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
-  }
-
-  size_t count = fl_value_get_length(args);
   for (size_t i = 0; i < count; ++i) {
     FlValue* item_val = fl_value_get_list_value(args, i);
     if (item_val == nullptr || fl_value_get_type(item_val) != FL_VALUE_TYPE_MAP) continue;
