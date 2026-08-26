@@ -37,6 +37,7 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
     private var currentActions: [[String: Any]] = []
     private var showBackButton: Bool = false
     private var isHeaderVisible: Bool = true
+    private var currentToolbarIdentifiers: [NSToolbarItem.Identifier] = []
 
     private var bottomNavContainer: NSView?
     private var segmentedControl: NSSegmentedControl?
@@ -58,16 +59,15 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
                 if let args = call.arguments as? [String: Any] {
                     let title = args["title"] as? String ?? ""
                     let subtitle = args["subtitle"] as? String ?? ""
-                    let showBack = args["showBackButton"] as? Bool ?? false
+                    self.showBackButton = args["showBackButton"] as? Bool ?? false
+
                     self.window?.title = title
                     if #available(macOS 11.0, *) {
                         self.window?.subtitle = subtitle
                     }
-                    if let colorStr = args["backgroundColor"] as? String, let color = self.parseCssColor(colorStr) {
-                        self.window?.backgroundColor = color
+                    if self.isHeaderVisible {
+                        self.updateToolbar()
                     }
-                    self.showBackButton = showBack
-                    self.updateToolbar()
                     result(nil)
                 } else {
                     result(FlutterError(code: "INVALID_ARGS", message: "Missing arguments for updateHeaderBar", details: nil))
@@ -81,6 +81,7 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
                         self.updateToolbar()
                     } else {
                         self.window?.toolbar = nil
+                        self.currentToolbarIdentifiers = []
                     }
                     result(nil)
                 } else {
@@ -138,7 +139,57 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
         window.styleMask.insert(.fullSizeContentView)
         window.isMovableByWindowBackground = true
 
-        let toolbarId = NSToolbar.Identifier("MainAppToolbar_\(UUID().uuidString)")
+        let newIdentifiers = itemIdentifiers
+
+        // If toolbar already exists and item structure hasn't changed, update items in-place without replacing NSToolbar to prevent flickering
+        if let existingToolbar = window.toolbar, currentToolbarIdentifiers == newIdentifiers {
+            for item in existingToolbar.items {
+                let idStr = item.itemIdentifier.rawValue
+
+                if idStr == "title" {
+                    if let container = item.view as? NSStackView {
+                        container.subviews.forEach { $0.removeFromSuperview() }
+                        let titleStr = window.title
+                        if !titleStr.isEmpty {
+                            let titleLabel = NSTextField(labelWithString: titleStr)
+                            titleLabel.font = NSFont.boldSystemFont(ofSize: 13)
+                            titleLabel.textColor = NSColor.labelColor
+                            titleLabel.alignment = .center
+                            container.addArrangedSubview(titleLabel)
+                        }
+                        if #available(macOS 11.0, *), let sub = window.subtitle, !sub.isEmpty {
+                            let subLabel = NSTextField(labelWithString: sub)
+                            subLabel.font = NSFont.systemFont(ofSize: 10)
+                            subLabel.textColor = NSColor.secondaryLabelColor
+                            subLabel.alignment = .center
+                            container.addArrangedSubview(subLabel)
+                        }
+                        let size = container.fittingSize
+                        let w = max(size.width, 100)
+                        let h = max(size.height, 28)
+                        item.minSize = NSSize(width: w, height: h)
+                        item.maxSize = NSSize(width: max(w, 300), height: 40)
+                    }
+                } else if let action = currentActions.first(where: { ($0["id"] as? String) == idStr }) {
+                    let type = action["type"] as? String ?? "action"
+                    if type == "tabbar", let segControl = item.view as? NSSegmentedControl {
+                        let selectedIndex = action["selectedIndex"] as? Int ?? segControl.selectedSegment
+                        if selectedIndex < segControl.segmentCount && segControl.selectedSegment != selectedIndex {
+                            segControl.selectedSegment = selectedIndex
+                        }
+                    } else if type == "search", let searchField = item.view as? NSSearchField {
+                        let val = action["value"] as? String ?? ""
+                        if searchField.stringValue != val {
+                            searchField.stringValue = val
+                        }
+                    }
+                }
+            }
+            return
+        }
+
+        currentToolbarIdentifiers = newIdentifiers
+        let toolbarId = NSToolbar.Identifier("MainAppToolbar")
         let newToolbar = NSToolbar(identifier: toolbarId)
         newToolbar.delegate = self
         newToolbar.displayMode = .iconOnly
@@ -219,6 +270,11 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
             }
 
             item.view = container
+            let size = container.fittingSize
+            let w = max(size.width, 100)
+            let h = max(size.height, 28)
+            item.minSize = NSSize(width: w, height: h)
+            item.maxSize = NSSize(width: max(w, 300), height: 40)
             return item
         }
 
@@ -261,6 +317,9 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
             searchField.target = self
             searchField.action = #selector(onHeaderSearchSubmitted(_:))
             item.view = searchField
+            let width = action["width"] as? Double ?? 220.0
+            item.minSize = NSSize(width: width, height: 28)
+            item.maxSize = NSSize(width: width, height: 28)
             return item
         }
 
@@ -280,6 +339,11 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
             segControl.target = self
             segControl.action = #selector(onHeaderTabChanged(_:))
             item.view = segControl
+            let size = segControl.fittingSize
+            let w = max(size.width, 120)
+            let h = max(size.height, 28)
+            item.minSize = NSSize(width: w, height: h)
+            item.maxSize = NSSize(width: w, height: h)
             return item
         }
 
@@ -308,6 +372,11 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
             }
 
             item.view = container
+            let size = container.fittingSize
+            let w = max(size.width, 100)
+            let h = max(size.height, 28)
+            item.minSize = NSSize(width: w, height: h)
+            item.maxSize = NSSize(width: max(w, 300), height: 40)
             return item
         }
 
