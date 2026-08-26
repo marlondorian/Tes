@@ -157,12 +157,15 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
                             titleLabel.alignment = .center
                             container.addArrangedSubview(titleLabel)
                         }
-                        if #available(macOS 11.0, *), let sub = window.subtitle, !sub.isEmpty {
-                            let subLabel = NSTextField(labelWithString: sub)
-                            subLabel.font = NSFont.systemFont(ofSize: 10)
-                            subLabel.textColor = NSColor.secondaryLabelColor
-                            subLabel.alignment = .center
-                            container.addArrangedSubview(subLabel)
+                        if #available(macOS 11.0, *) {
+                            let sub = window.subtitle
+                            if !sub.isEmpty {
+                                let subLabel = NSTextField(labelWithString: sub)
+                                subLabel.font = NSFont.systemFont(ofSize: 10)
+                                subLabel.textColor = NSColor.secondaryLabelColor
+                                subLabel.alignment = .center
+                                container.addArrangedSubview(subLabel)
+                            }
                         }
                         let size = container.fittingSize
                         let w = max(size.width, 100)
