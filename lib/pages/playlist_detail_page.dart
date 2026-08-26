@@ -30,7 +30,6 @@ class PlaylistDetailPage extends StatelessWidget {
           },
           iconName: "go-previous-symbolic",
         ),
-        title: "",
         backgroundColor: Colors.transparent,
       ),
       backgroundColor: const Color(0xFF0F0B1A),

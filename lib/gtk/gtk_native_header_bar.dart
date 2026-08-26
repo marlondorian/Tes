@@ -15,12 +15,10 @@ import '../pages/route_observer.dart';
 /// ```dart
 /// Scaffold(
 ///   appBar: GtkNativeHeaderBar(
-///     title: 'My App',
-///     subtitle: 'Subheading',
+///     title: GtkHeaderTitle(title: 'My App'),
 ///     leading: GtkHeaderAction(
 ///       id: 'back',
 ///       iconName: 'go-previous-symbolic',
-///       position: 'start',
 ///       onPressed: () => Navigator.pop(context),
 ///     ),
 ///     actions: [
@@ -36,11 +34,9 @@ import '../pages/route_observer.dart';
 /// )
 /// ```
 class GtkNativeHeaderBar extends StatefulWidget implements PreferredSizeWidget {
-  /// Main title string or custom [GtkHeaderItem] (e.g. [GtkHeaderTitle], [GtkHeaderSearchBar], [GtkHeaderTabBar]).
-  final dynamic title;
-
-  /// Optional subtitle string displayed under the title when title is a String.
-  final String? subtitle;
+  /// Optional custom title [GtkHeaderItem] placed in the center of the header bar.
+  /// Can be a [GtkHeaderTitle], [GtkHeaderSearchBar], or [GtkHeaderTabBar].
+  final GtkHeaderItem? title;
 
   /// Optional custom leading [GtkHeaderItem] (e.g. back button, search bar, or menu button).
   final GtkHeaderItem? leading;
@@ -64,8 +60,7 @@ class GtkNativeHeaderBar extends StatefulWidget implements PreferredSizeWidget {
 
   const GtkNativeHeaderBar({
     super.key,
-    required this.title,
-    this.subtitle,
+    this.title,
     this.leading,
     this.showBackButton = false,
     this.onBack,
@@ -171,17 +166,7 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
     } catch (_) {}
   }
 
-  GtkHeaderItem? get _resolvedTitleItem {
-    if (widget.title is GtkHeaderItem) {
-      return widget.title as GtkHeaderItem;
-    } else if (widget.title is String) {
-      return GtkHeaderTitle(
-        title: widget.title as String,
-        subtitle: widget.subtitle,
-      );
-    }
-    return null;
-  }
+  GtkHeaderItem? get _resolvedTitleItem => widget.title;
 
   List<GtkHeaderItem> _getAllItems() {
     final list = <GtkHeaderItem>[];
@@ -272,10 +257,9 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
   Future<void> _syncWithNative() async {
     try {
       await _ch.invokeMethod('setHeaderBarVisibility', {'visible': true});
-      final titleStr = widget.title is String ? widget.title as String : '';
       await _ch.invokeMethod('updateHeaderBar', {
-        'title': titleStr,
-        'subtitle': widget.subtitle ?? '',
+        'title': '',
+        'subtitle': '',
         'showBackButton': widget.showBackButton,
         'backgroundColor': _colorToCss(widget.backgroundColor) ?? '',
       });
@@ -287,7 +271,7 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
         allActions.add(leadingJson);
       }
       final titleItem = _resolvedTitleItem;
-      if (titleItem != null && widget.title is! String) {
+      if (titleItem != null) {
         final titleJson = titleItem.toJson();
         titleJson['position'] = titleItem.position ?? 'center';
         allActions.add(titleJson);
@@ -361,15 +345,7 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
         onPressed: item.onPressed,
       );
     } else if (item is GtkHeaderTitle) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          if (item.subtitle != null && item.subtitle!.isNotEmpty)
-            Text(item.subtitle!, style: Theme.of(context).textTheme.labelSmall),
-        ],
-      );
+      return Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14));
     } else if (item is GtkHeaderSearchBar) {
       return Container(
         width: item.width,
@@ -455,19 +431,8 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
       }
 
       Widget? titleWidget;
-      if (widget.title is String) {
-        final titleStr = widget.title as String;
-        titleWidget = Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(titleStr),
-            if (widget.subtitle != null && widget.subtitle!.isNotEmpty)
-              Text(widget.subtitle!, style: Theme.of(context).textTheme.labelSmall),
-          ],
-        );
-      } else if (widget.title is GtkHeaderItem) {
-        titleWidget = _buildHeaderItemWidget(widget.title as GtkHeaderItem);
+      if (widget.title != null) {
+        titleWidget = _buildHeaderItemWidget(widget.title!);
       }
 
       final actionsWidgets = <Widget>[];

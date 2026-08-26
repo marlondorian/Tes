@@ -45,12 +45,10 @@ class GtkHeaderAction extends GtkHeaderItem {
 /// A title and optional subtitle item placed in the header bar.
 class GtkHeaderTitle extends GtkHeaderItem {
   final String title;
-  final String? subtitle;
 
   const GtkHeaderTitle({
     super.id = 'title',
     required this.title,
-    this.subtitle,
     super.position,
   });
 
@@ -59,7 +57,6 @@ class GtkHeaderTitle extends GtkHeaderItem {
     'type': 'title',
     'id': id,
     'title': title,
-    'subtitle': subtitle,
     if (position != null) 'position': position,
   };
 }
@@ -320,7 +317,6 @@ Future<void> applyCustomCss(String css) async {
 
 class GtkScaffold extends StatefulWidget {
   final String title;
-  final String? subtitle;
   final bool showBackButton;
   final VoidCallback? onBack;
   final List<GtkHeaderAction>? headerActions;
@@ -330,7 +326,6 @@ class GtkScaffold extends StatefulWidget {
   const GtkScaffold({
     super.key,
     this.title = '',
-    this.subtitle,
     this.showBackButton = false,
     this.onBack,
     this.headerActions,
@@ -453,7 +448,7 @@ class _GtkScaffoldState extends State<GtkScaffold> with RouteAware {
         await _ch.invokeMethod('setHeaderBarVisibility', {'visible': true});
         await _ch.invokeMethod('updateHeaderBar', {
           'title': widget.title,
-          'subtitle': widget.subtitle ?? '',
+          'subtitle': '',
           'showBackButton': widget.showBackButton,
         });
 
@@ -477,8 +472,7 @@ class _GtkScaffoldState extends State<GtkScaffold> with RouteAware {
       return Scaffold(
         appBar: widget.title.isNotEmpty
             ? GtkNativeHeaderBar(
-                title: widget.title,
-                subtitle: widget.subtitle,
+                title: GtkHeaderTitle(title: widget.title),
                 showBackButton: widget.showBackButton,
                 onBack: widget.onBack,
                 actions: widget.headerActions,

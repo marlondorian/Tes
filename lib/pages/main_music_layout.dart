@@ -78,7 +78,6 @@ class _MainMusicLayoutState extends State<MainMusicLayout> {
             });
           },
         ),
-        title: '',
         backgroundColor: const Color(0xFF1E1B2E),
         actions: [
           GtkHeaderSearchBar(
