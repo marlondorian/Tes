@@ -146,34 +146,7 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
             for item in existingToolbar.items {
                 let idStr = item.itemIdentifier.rawValue
 
-                if idStr == "title" {
-                    if let container = item.view as? NSStackView {
-                        container.subviews.forEach { $0.removeFromSuperview() }
-                        let titleStr = window.title
-                        if !titleStr.isEmpty {
-                            let titleLabel = NSTextField(labelWithString: titleStr)
-                            titleLabel.font = NSFont.boldSystemFont(ofSize: 13)
-                            titleLabel.textColor = NSColor.labelColor
-                            titleLabel.alignment = .center
-                            container.addArrangedSubview(titleLabel)
-                        }
-                        if #available(macOS 11.0, *) {
-                            let sub = window.subtitle
-                            if !sub.isEmpty {
-                                let subLabel = NSTextField(labelWithString: sub)
-                                subLabel.font = NSFont.systemFont(ofSize: 10)
-                                subLabel.textColor = NSColor.secondaryLabelColor
-                                subLabel.alignment = .center
-                                container.addArrangedSubview(subLabel)
-                            }
-                        }
-                        let size = container.fittingSize
-                        let w = max(size.width, 100)
-                        let h = max(size.height, 28)
-                        item.minSize = NSSize(width: w, height: h)
-                        item.maxSize = NSSize(width: max(w, 300), height: 40)
-                    }
-                } else if let action = currentActions.first(where: { ($0["id"] as? String) == idStr }) {
+                if let action = currentActions.first(where: { ($0["id"] as? String) == idStr }) {
                     let type = action["type"] as? String ?? "action"
                     if type == "tabbar", let segControl = item.view as? NSSegmentedControl {
                         let selectedIndex = action["selectedIndex"] as? Int ?? segControl.selectedSegment
@@ -185,6 +158,21 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
                         if searchField.stringValue != val {
                             searchField.stringValue = val
                         }
+                    } else if type == "title", let container = item.view as? NSStackView {
+                        container.subviews.forEach { $0.removeFromSuperview() }
+                        let titleStr = action["title"] as? String ?? ""
+                        if !titleStr.isEmpty {
+                            let titleLabel = NSTextField(labelWithString: titleStr)
+                            titleLabel.font = NSFont.boldSystemFont(ofSize: 13)
+                            titleLabel.textColor = NSColor.labelColor
+                            titleLabel.alignment = .center
+                            container.addArrangedSubview(titleLabel)
+                        }
+                        let size = container.fittingSize
+                        let w = max(size.width, 100)
+                        let h = max(size.height, 28)
+                        item.minSize = NSSize(width: w, height: h)
+                        item.maxSize = NSSize(width: max(w, 300), height: 40)
                     }
                 }
             }
@@ -222,13 +210,22 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
         }
 
         list.append(.flexibleSpace)
-        list.append(NSToolbarItem.Identifier("title"))
+
+        for action in currentActions {
+            let id = action["id"] as? String ?? ""
+            let pos = action["position"] as? String ?? "end"
+            if pos == "center" && !addedIds.contains(id) {
+                list.append(NSToolbarItem.Identifier(id))
+                addedIds.insert(id)
+            }
+        }
+
         list.append(.flexibleSpace)
 
         for action in currentActions {
             let id = action["id"] as? String ?? ""
             let pos = action["position"] as? String ?? "end"
-            if pos != "start" && !addedIds.contains(id) {
+            if pos != "start" && pos != "center" && !addedIds.contains(id) {
                 list.append(NSToolbarItem.Identifier(id))
                 addedIds.insert(id)
             }
@@ -247,39 +244,6 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         let idStr = itemIdentifier.rawValue
-
-        if idStr == "title" {
-            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            let container = NSStackView()
-            container.orientation = .vertical
-            container.alignment = .centerX
-            container.spacing = 1
-
-            let titleStr = window?.title ?? ""
-            if !titleStr.isEmpty {
-                let titleLabel = NSTextField(labelWithString: titleStr)
-                titleLabel.font = NSFont.boldSystemFont(ofSize: 13)
-                titleLabel.textColor = NSColor.labelColor
-                titleLabel.alignment = .center
-                container.addArrangedSubview(titleLabel)
-            }
-
-            if #available(macOS 11.0, *), let sub = window?.subtitle, !sub.isEmpty {
-                let subLabel = NSTextField(labelWithString: sub)
-                subLabel.font = NSFont.systemFont(ofSize: 10)
-                subLabel.textColor = NSColor.secondaryLabelColor
-                subLabel.alignment = .center
-                container.addArrangedSubview(subLabel)
-            }
-
-            item.view = container
-            let size = container.fittingSize
-            let w = max(size.width, 100)
-            let h = max(size.height, 28)
-            item.minSize = NSSize(width: w, height: h)
-            item.maxSize = NSSize(width: max(w, 300), height: 40)
-            return item
-        }
 
         if idStr == "back" {
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
