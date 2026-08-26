@@ -33,8 +33,10 @@ class NativeControlManager {
 
   struct HeaderActionInfo {
     std::string id;
-    GtkWidget* button;
-    NativeControlManager* manager;
+    std::string type;
+    int tab_index{0};
+    GtkWidget* widget{nullptr};
+    NativeControlManager* manager{nullptr};
   };
 
   struct BottomNavItemInfo {
@@ -93,6 +95,7 @@ class NativeControlManager {
   FlMethodResponse* HandleRemoveInput(FlValue* args);
   FlMethodResponse* HandleUpdateNativePosition(FlValue* args);
   FlMethodResponse* HandleSetNativeVisibility(FlValue* args);
+  FlMethodResponse* HandleRaiseWindow(FlValue* args);
 
   // Scaffold channel handlers
   FlMethodResponse* HandleUpdateHeaderBar(FlValue* args);
@@ -114,6 +117,9 @@ class NativeControlManager {
 
   static void OnHeaderBackClicked(GtkButton* button, gpointer user_data);
   static void OnHeaderActionClicked(GtkButton* button, gpointer user_data);
+  static void OnHeaderSearchChanged(GtkSearchEntry* entry, gpointer user_data);
+  static void OnHeaderSearchActivate(GtkEntry* entry, gpointer user_data);
+  static void OnHeaderTabClicked(GtkButton* button, gpointer user_data);
   static void OnBottomNavItemClicked(GtkButton* button, gpointer user_data);
 
   void AttachScrollHandler(GtkWidget* widget);

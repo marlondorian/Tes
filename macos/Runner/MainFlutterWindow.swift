@@ -245,10 +245,69 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
         }
 
         let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        let type = action["type"] as? String ?? "action"
         let label = action["label"] as? String ?? ""
         item.label = label
         item.paletteLabel = label
         item.toolTip = label
+
+        if type == "search" {
+            let placeholder = action["placeholder"] as? String ?? "Search..."
+            let val = action["value"] as? String ?? ""
+            let searchField = NSSearchField(frame: NSRect(x: 0, y: 0, width: 220, height: 28))
+            searchField.placeholderString = placeholder
+            searchField.stringValue = val
+            searchField.target = self
+            searchField.action = #selector(onHeaderSearchSubmitted(_:))
+            item.view = searchField
+            return item
+        }
+
+        if type == "tabbar" {
+            let tabs = action["tabs"] as? [String] ?? []
+            let selectedIndex = action["selectedIndex"] as? Int ?? 0
+            let segControl = NSSegmentedControl()
+            segControl.segmentCount = tabs.count
+            segControl.trackingMode = .selectOne
+            for (i, tStr) in tabs.enumerated() {
+                segControl.setLabel(tStr, forSegment: i)
+            }
+            if selectedIndex < tabs.count {
+                segControl.selectedSegment = selectedIndex
+            }
+            segControl.target = self
+            segControl.action = #selector(onHeaderTabChanged(_:))
+            item.view = segControl
+            return item
+        }
+
+        if type == "title" {
+            let container = NSStackView()
+            container.orientation = .vertical
+            container.alignment = .centerX
+            container.spacing = 1
+
+            let titleStr = action["title"] as? String ?? ""
+            if !titleStr.isEmpty {
+                let titleLabel = NSTextField(labelWithString: titleStr)
+                titleLabel.font = NSFont.boldSystemFont(ofSize: 13)
+                titleLabel.textColor = NSColor.labelColor
+                titleLabel.alignment = .center
+                container.addArrangedSubview(titleLabel)
+            }
+
+            let sub = action["subtitle"] as? String ?? ""
+            if !sub.isEmpty {
+                let subLabel = NSTextField(labelWithString: sub)
+                subLabel.font = NSFont.systemFont(ofSize: 10)
+                subLabel.textColor = NSColor.secondaryLabelColor
+                subLabel.alignment = .center
+                container.addArrangedSubview(subLabel)
+            }
+
+            item.view = container
+            return item
+        }
 
         let iconName = action["iconName"] as? String
         if #available(macOS 11.0, *), let sfName = mapGtkIconToSFSymbol(iconName), let image = NSImage(systemSymbolName: sfName, accessibilityDescription: label) {
@@ -269,6 +328,14 @@ class ScaffoldChannelManager: NSObject, NSToolbarDelegate {
         } else {
             scaffoldChannel?.invokeMethod("onHeaderActionPressed", arguments: ["id": id])
         }
+    }
+
+    @objc private func onHeaderSearchSubmitted(_ sender: NSSearchField) {
+        scaffoldChannel?.invokeMethod("onHeaderSearchSubmitted", arguments: ["id": "search", "text": sender.stringValue])
+    }
+
+    @objc private func onHeaderTabChanged(_ sender: NSSegmentedControl) {
+        scaffoldChannel?.invokeMethod("onHeaderTabSelected", arguments: ["id": "tabbar", "index": sender.selectedSegment])
     }
 
     // MARK: - Bottom Navigation

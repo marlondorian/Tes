@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:dart_ytmusic_api/yt_music.dart';
 import 'package:dart_ytmusic_api/types.dart';
-import 'audio_controller.dart';
+import '../audio/audio_controller.dart';
 
 final ytmusic = YTMusic();
 
@@ -144,7 +144,9 @@ class _SongSearchWidgetState extends State<SongSearchWidget> {
                         });
                       },
                       onChangeEnd: (value) {
-                        final newPosition = Duration(milliseconds: value.toInt());
+                        final newPosition = Duration(
+                          milliseconds: value.toInt(),
+                        );
                         audioController.seek(newPosition);
                         setState(() {
                           _isDragging = false;
@@ -194,6 +196,7 @@ class _SongSearchWidgetState extends State<SongSearchWidget> {
                       song.videoId,
                       title: song.name,
                       artist: song.artist.name,
+                      album: song.album?.name,
                       thumbnailUrl: song.thumbnails.isNotEmpty
                           ? song.thumbnails.first.url
                           : null,

@@ -3,30 +3,129 @@ import 'package:flutter/services.dart';
 import 'gtk_scaffold_channel.dart';
 import 'gtk_native_header_bar.dart';
 import 'native_control_channel.dart';
-import 'route_observer.dart';
+import '../pages/route_observer.dart';
 
-class GtkHeaderAction {
+/// Abstract base class for all items that can be placed in a GTK / macOS header bar
+abstract class GtkHeaderItem {
   final String id;
-  final String? label;
-  final String? iconName;
-  final String position; // 'start' or 'end'
-  final VoidCallback onPressed;
+  final String? position; // 'start', 'center', 'end', or null to inherit from placement section
 
-  const GtkHeaderAction({
+  const GtkHeaderItem({
     required this.id,
-    this.label,
-    this.iconName,
-    this.position = 'end',
-    required this.onPressed,
+    this.position,
   });
 
+  Map<String, dynamic> toJson();
+}
+
+/// A button or icon action item placed in the header bar.
+class GtkHeaderAction extends GtkHeaderItem {
+  final String? label;
+  final String? iconName;
+  final VoidCallback? onPressed;
+
+  const GtkHeaderAction({
+    required super.id,
+    this.label,
+    this.iconName,
+    super.position,
+    this.onPressed,
+  });
+
+  @override
   Map<String, dynamic> toJson() => {
+    'type': 'action',
     'id': id,
     'label': label,
     'iconName': iconName,
-    'position': position,
+    if (position != null) 'position': position,
   };
 }
+
+/// A title and optional subtitle item placed in the header bar.
+class GtkHeaderTitle extends GtkHeaderItem {
+  final String title;
+  final String? subtitle;
+
+  const GtkHeaderTitle({
+    super.id = 'title',
+    required this.title,
+    this.subtitle,
+    super.position,
+  });
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'type': 'title',
+    'id': id,
+    'title': title,
+    'subtitle': subtitle,
+    if (position != null) 'position': position,
+  };
+}
+
+/// A search input bar placed in the header bar.
+class GtkHeaderSearchBar extends GtkHeaderItem {
+  final String placeholder;
+  final String value;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onClear;
+  final TextEditingController? controller;
+  final double width;
+
+  const GtkHeaderSearchBar({
+    required super.id,
+    this.placeholder = 'Buscar...',
+    this.value = '',
+    this.onChanged,
+    this.onSubmitted,
+    this.onClear,
+    this.controller,
+    this.width = 240.0,
+    super.position,
+  });
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'type': 'search',
+    'id': id,
+    'placeholder': placeholder,
+    'value': value,
+    'width': width,
+    if (position != null) 'position': position,
+  };
+}
+
+/// A tab bar / segmented control placed in the header bar.
+class GtkHeaderTabBar extends GtkHeaderItem {
+  final List<String> tabs;
+  final int selectedIndex;
+  final ValueChanged<int>? onTabSelected;
+
+  const GtkHeaderTabBar({
+    required super.id,
+    required this.tabs,
+    this.selectedIndex = 0,
+    this.onTabSelected,
+    super.position,
+  });
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'type': 'tabbar',
+    'id': id,
+    'tabs': tabs,
+    'selectedIndex': selectedIndex,
+    if (position != null) 'position': position,
+  };
+}
+
+typedef HeaderItem = GtkHeaderItem;
+typedef HeaderAction = GtkHeaderAction;
+typedef HeaderTitle = GtkHeaderTitle;
+typedef HeaderSearchBar = GtkHeaderSearchBar;
+typedef HeaderTabBar = GtkHeaderTabBar;
 
 class GtkBottomNavigationItem {
   final String id;
@@ -77,7 +176,7 @@ class GtkBottomNavigationBar extends StatefulWidget {
     required this.items,
     this.visible = true,
     this.backgroundColor,
-    this.height = 47.0,
+    this.height = 54.0,
   });
 
   @override
@@ -333,7 +432,7 @@ class _GtkScaffoldState extends State<GtkScaffold> with RouteAware {
         if (id != null && widget.headerActions != null) {
           for (final action in widget.headerActions!) {
             if (action.id == id) {
-              action.onPressed();
+              action.onPressed?.call();
               break;
             }
           }

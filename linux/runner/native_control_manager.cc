@@ -190,6 +190,8 @@ void NativeControlManager::OnNativeMethodCall(FlMethodChannel* channel,
     response = self->HandleUpdateNativePosition(args);
   } else if (g_strcmp0(method, "setVisibility") == 0) {
     response = self->HandleSetNativeVisibility(args);
+  } else if (g_strcmp0(method, "raiseWindow") == 0) {
+    response = self->HandleRaiseWindow(args);
   } else {
     response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
   }
@@ -616,6 +618,17 @@ FlMethodResponse* NativeControlManager::HandleSetNativeVisibility(FlValue* args)
   return FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
 }
 
+FlMethodResponse* NativeControlManager::HandleRaiseWindow(FlValue* args) {
+  if (fl_view_widget_ != nullptr) {
+    GtkWidget* toplevel = gtk_widget_get_toplevel(fl_view_widget_);
+    if (toplevel != nullptr && GTK_IS_WINDOW(toplevel)) {
+      gtk_window_deiconify(GTK_WINDOW(toplevel));
+      gtk_window_present(GTK_WINDOW(toplevel));
+    }
+  }
+  return FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+}
+
 // ---------------------- SCAFFOLD HANDLERS ----------------------
 
 FlMethodResponse* NativeControlManager::HandleUpdateHeaderBar(FlValue* args) {
@@ -698,8 +711,8 @@ FlMethodResponse* NativeControlManager::HandleSetHeaderActions(FlValue* args) {
   }
 
   for (auto& item : header_actions_) {
-    if (item->button != nullptr) {
-      gtk_widget_destroy(item->button);
+    if (item->widget != nullptr) {
+      gtk_widget_destroy(item->widget);
     }
   }
   header_actions_.clear();
@@ -714,38 +727,147 @@ FlMethodResponse* NativeControlManager::HandleSetHeaderActions(FlValue* args) {
     if (item_val == nullptr || fl_value_get_type(item_val) != FL_VALUE_TYPE_MAP) continue;
 
     std::string id = get_string_val(item_val, "id");
-    std::string label = get_string_val(item_val, "label");
-    std::string icon_name = get_string_val(item_val, "iconName");
+    std::string type = get_string_val(item_val, "type");
+    if (type.empty()) type = "action";
     std::string position = get_string_val(item_val, "position");
 
-    GtkWidget* btn = nullptr;
-    if (!icon_name.empty()) {
-      btn = gtk_button_new_from_icon_name(icon_name.c_str(), GTK_ICON_SIZE_BUTTON);
-      if (!label.empty()) {
-        gtk_widget_set_tooltip_text(btn, label.c_str());
+    GtkWidget* item_widget = nullptr;
+
+    if (type == "search") {
+      std::string placeholder = get_string_val(item_val, "placeholder");
+      std::string value = get_string_val(item_val, "value");
+
+      GtkWidget* entry = gtk_search_entry_new();
+      if (!placeholder.empty()) {
+        gtk_entry_set_placeholder_text(GTK_ENTRY(entry), placeholder.c_str());
       }
-    } else if (!label.empty()) {
-      btn = gtk_button_new_with_label(label.c_str());
-    } else {
-      btn = gtk_button_new();
+      if (!value.empty()) {
+        gtk_entry_set_text(GTK_ENTRY(entry), value.c_str());
+      }
+
+      auto info = std::make_shared<HeaderActionInfo>();
+      info->id = id;
+      info->type = "search";
+      info->widget = entry;
+      info->manager = this;
+
+      g_signal_connect(entry, "search-changed", G_CALLBACK(OnHeaderSearchChanged), info.get());
+      g_signal_connect(entry, "activate", G_CALLBACK(OnHeaderSearchActivate), info.get());
+      header_actions_.push_back(info);
+      item_widget = entry;
+
+    } else if (type == "tabbar") {
+      FlValue* tabs_val = fl_value_lookup_string(item_val, "tabs");
+      int selected_index = static_cast<int>(get_double_val(item_val, "selectedIndex"));
+
+      GtkWidget* box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+      GtkStyleContext* context = gtk_widget_get_style_context(box);
+      gtk_style_context_add_class(context, "linked");
+
+      if (tabs_val != nullptr && fl_value_get_type(tabs_val) == FL_VALUE_TYPE_LIST) {
+        size_t num_tabs = fl_value_get_length(tabs_val);
+        GtkWidget* group = nullptr;
+        for (size_t t = 0; t < num_tabs; ++t) {
+          FlValue* tab_title_val = fl_value_get_list_value(tabs_val, t);
+          std::string tab_title = fl_value_get_type(tab_title_val) == FL_VALUE_TYPE_STRING
+              ? fl_value_get_string(tab_title_val) : "";
+
+          GtkWidget* tab_btn = nullptr;
+          if (t == 0) {
+            tab_btn = gtk_radio_button_new_with_label(nullptr, tab_title.c_str());
+            group = tab_btn;
+          } else {
+            tab_btn = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(group), tab_title.c_str());
+          }
+          gtk_toggle_button_set_mode(GTK_TOGGLE_BUTTON(tab_btn), FALSE);
+          if (static_cast<int>(t) == selected_index) {
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(tab_btn), TRUE);
+          }
+
+          auto info = std::make_shared<HeaderActionInfo>();
+          info->id = id;
+          info->type = "tabbar";
+          info->tab_index = static_cast<int>(t);
+          info->widget = tab_btn;
+          info->manager = this;
+
+          g_signal_connect(tab_btn, "clicked", G_CALLBACK(OnHeaderTabClicked), info.get());
+          header_actions_.push_back(info);
+
+          gtk_container_add(GTK_CONTAINER(box), tab_btn);
+          gtk_widget_show(tab_btn);
+        }
+      }
+      item_widget = box;
+
+    } else if (type == "title") {
+      std::string title = get_string_val(item_val, "title");
+      std::string subtitle = get_string_val(item_val, "subtitle");
+
+      GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+      gtk_widget_set_valign(vbox, GTK_ALIGN_CENTER);
+
+      GtkWidget* lbl_title = gtk_label_new(title.c_str());
+      GtkStyleContext* ctx_title = gtk_widget_get_style_context(lbl_title);
+      gtk_style_context_add_class(ctx_title, "title");
+      gtk_container_add(GTK_CONTAINER(vbox), lbl_title);
+      gtk_widget_show(lbl_title);
+
+      if (!subtitle.empty()) {
+        GtkWidget* lbl_sub = gtk_label_new(subtitle.c_str());
+        GtkStyleContext* ctx_sub = gtk_widget_get_style_context(lbl_sub);
+        gtk_style_context_add_class(ctx_sub, "subtitle");
+        gtk_container_add(GTK_CONTAINER(vbox), lbl_sub);
+        gtk_widget_show(lbl_sub);
+      }
+
+      auto info = std::make_shared<HeaderActionInfo>();
+      info->id = id;
+      info->type = "title";
+      info->widget = vbox;
+      info->manager = this;
+      header_actions_.push_back(info);
+      item_widget = vbox;
+
+    } else { // "action"
+      std::string label = get_string_val(item_val, "label");
+      std::string icon_name = get_string_val(item_val, "iconName");
+
+      GtkWidget* btn = nullptr;
+      if (!icon_name.empty()) {
+        btn = gtk_button_new_from_icon_name(icon_name.c_str(), GTK_ICON_SIZE_BUTTON);
+        if (!label.empty()) {
+          gtk_widget_set_tooltip_text(btn, label.c_str());
+        }
+      } else if (!label.empty()) {
+        btn = gtk_button_new_with_label(label.c_str());
+      } else {
+        btn = gtk_button_new();
+      }
+      gtk_widget_set_can_focus(btn, FALSE);
+      gtk_widget_set_focus_on_click(btn, FALSE);
+
+      auto info = std::make_shared<HeaderActionInfo>();
+      info->id = id;
+      info->type = "action";
+      info->widget = btn;
+      info->manager = this;
+
+      g_signal_connect(btn, "clicked", G_CALLBACK(OnHeaderActionClicked), info.get());
+      header_actions_.push_back(info);
+      item_widget = btn;
     }
-    gtk_widget_set_can_focus(btn, FALSE);
-    gtk_widget_set_focus_on_click(btn, FALSE);
 
-    auto info = std::make_shared<HeaderActionInfo>();
-    info->id = id;
-    info->button = btn;
-    info->manager = this;
-
-    g_signal_connect(btn, "clicked", G_CALLBACK(OnHeaderActionClicked), info.get());
-    header_actions_.push_back(info);
-
-    if (position == "start") {
-      gtk_header_bar_pack_start(header_bar_, btn);
-    } else {
-      gtk_header_bar_pack_end(header_bar_, btn);
+    if (item_widget != nullptr) {
+      if (position == "start") {
+        gtk_header_bar_pack_start(header_bar_, item_widget);
+      } else if (position == "center") {
+        gtk_header_bar_set_custom_title(header_bar_, item_widget);
+      } else {
+        gtk_header_bar_pack_end(header_bar_, item_widget);
+      }
+      gtk_widget_show(item_widget);
     }
-    gtk_widget_show(btn);
   }
 
   return FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
@@ -764,6 +886,51 @@ void NativeControlManager::OnHeaderActionClicked(GtkButton* button, gpointer use
                                   "onHeaderActionPressed",
                                   args,
                                   nullptr, nullptr, nullptr);
+}
+
+void NativeControlManager::OnHeaderSearchChanged(GtkSearchEntry* entry, gpointer user_data) {
+  auto* info = static_cast<HeaderActionInfo*>(user_data);
+  if (info == nullptr || info->manager == nullptr || info->manager->scaffold_channel_ == nullptr) return;
+
+  const gchar* text = gtk_entry_get_text(GTK_ENTRY(entry));
+  g_autoptr(FlValue) args = fl_value_new_map();
+  fl_value_set_string_take(args, "id", fl_value_new_string(info->id.c_str()));
+  fl_value_set_string_take(args, "text", fl_value_new_string(text ? text : ""));
+
+  fl_method_channel_invoke_method(info->manager->scaffold_channel_,
+                                  "onHeaderSearchChanged",
+                                  args, nullptr, nullptr, nullptr);
+}
+
+void NativeControlManager::OnHeaderSearchActivate(GtkEntry* entry, gpointer user_data) {
+  auto* info = static_cast<HeaderActionInfo*>(user_data);
+  if (info == nullptr || info->manager == nullptr || info->manager->scaffold_channel_ == nullptr) return;
+
+  const gchar* text = gtk_entry_get_text(entry);
+  g_autoptr(FlValue) args = fl_value_new_map();
+  fl_value_set_string_take(args, "id", fl_value_new_string(info->id.c_str()));
+  fl_value_set_string_take(args, "text", fl_value_new_string(text ? text : ""));
+
+  fl_method_channel_invoke_method(info->manager->scaffold_channel_,
+                                  "onHeaderSearchSubmitted",
+                                  args, nullptr, nullptr, nullptr);
+}
+
+void NativeControlManager::OnHeaderTabClicked(GtkButton* button, gpointer user_data) {
+  auto* info = static_cast<HeaderActionInfo*>(user_data);
+  if (info == nullptr || info->manager == nullptr || info->manager->scaffold_channel_ == nullptr) return;
+
+  if (GTK_IS_TOGGLE_BUTTON(button) && !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button))) {
+    return;
+  }
+
+  g_autoptr(FlValue) args = fl_value_new_map();
+  fl_value_set_string_take(args, "id", fl_value_new_string(info->id.c_str()));
+  fl_value_set_string_take(args, "index", fl_value_new_int(info->tab_index));
+
+  fl_method_channel_invoke_method(info->manager->scaffold_channel_,
+                                  "onHeaderTabSelected",
+                                  args, nullptr, nullptr, nullptr);
 }
 
 FlMethodResponse* NativeControlManager::HandleSetupBottomNav(FlValue* args) {
@@ -819,9 +986,11 @@ FlMethodResponse* NativeControlManager::HandleSetupBottomNav(FlValue* args) {
 
     GtkWidget* btn = nullptr;
     if (!icon_name.empty() && !label.empty()) {
-      GtkWidget* box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+      GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
       GtkWidget* icon = gtk_image_new_from_icon_name(icon_name.c_str(), GTK_ICON_SIZE_BUTTON);
       GtkWidget* lbl = gtk_label_new(label.c_str());
+      gtk_widget_set_halign(icon, GTK_ALIGN_CENTER);
+      gtk_widget_set_halign(lbl, GTK_ALIGN_CENTER);
       gtk_box_pack_start(GTK_BOX(box), icon, FALSE, FALSE, 0);
       gtk_box_pack_start(GTK_BOX(box), lbl, FALSE, FALSE, 0);
       btn = gtk_button_new();

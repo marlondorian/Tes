@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'native_control_channel.dart';
-import 'route_observer.dart';
+import '../gtk/native_control_channel.dart';
+import '../pages/route_observer.dart';
 
 typedef InputCallback = void Function(String value);
 

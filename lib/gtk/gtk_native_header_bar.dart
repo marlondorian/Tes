@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'gtk_scaffold.dart';
 import 'gtk_scaffold_channel.dart';
 import 'native_control_channel.dart';
-import 'route_observer.dart';
+import '../pages/route_observer.dart';
 
 /// A [PreferredSizeWidget] that matches the height and configures the native GTK HeaderBar
 /// rendered as a GtkOverlay on top of FlView.
@@ -36,14 +36,14 @@ import 'route_observer.dart';
 /// )
 /// ```
 class GtkNativeHeaderBar extends StatefulWidget implements PreferredSizeWidget {
-  /// Main title string displayed in the GTK HeaderBar.
-  final String title;
+  /// Main title string or custom [GtkHeaderItem] (e.g. [GtkHeaderTitle], [GtkHeaderSearchBar], [GtkHeaderTabBar]).
+  final dynamic title;
 
-  /// Optional subtitle string displayed under the title.
+  /// Optional subtitle string displayed under the title when title is a String.
   final String? subtitle;
 
-  /// Optional custom leading [GtkHeaderAction] (e.g. back button or menu button).
-  final GtkHeaderAction? leading;
+  /// Optional custom leading [GtkHeaderItem] (e.g. back button, search bar, or menu button).
+  final GtkHeaderItem? leading;
 
   /// Whether to show the standard GTK back button.
   final bool showBackButton;
@@ -51,8 +51,8 @@ class GtkNativeHeaderBar extends StatefulWidget implements PreferredSizeWidget {
   /// Callback when standard back button is clicked.
   final VoidCallback? onBack;
 
-  /// List of action items placed on the GTK HeaderBar.
-  final List<GtkHeaderAction>? actions;
+  /// List of action/widget items placed on the GTK HeaderBar.
+  final List<GtkHeaderItem>? actions;
 
   /// Optional background color for the GTK HeaderBar.
   /// If null, the native GTK theme default color is used.
@@ -171,12 +171,39 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
     } catch (_) {}
   }
 
+  GtkHeaderItem? get _resolvedTitleItem {
+    if (widget.title is GtkHeaderItem) {
+      return widget.title as GtkHeaderItem;
+    } else if (widget.title is String) {
+      return GtkHeaderTitle(
+        title: widget.title as String,
+        subtitle: widget.subtitle,
+      );
+    }
+    return null;
+  }
+
+  List<GtkHeaderItem> _getAllItems() {
+    final list = <GtkHeaderItem>[];
+    if (widget.leading != null) {
+      list.add(widget.leading!);
+    }
+    final titleItem = _resolvedTitleItem;
+    if (titleItem != null) {
+      list.add(titleItem);
+    }
+    if (widget.actions != null) {
+      list.addAll(widget.actions!);
+    }
+    return list;
+  }
+
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'onHeaderBack':
         if (!mounted) break;
-        if (widget.leading != null) {
-          widget.leading!.onPressed();
+        if (widget.leading is GtkHeaderAction && (widget.leading as GtkHeaderAction).onPressed != null) {
+          (widget.leading as GtkHeaderAction).onPressed!();
         } else if (widget.onBack != null) {
           widget.onBack!();
         } else {
@@ -187,17 +214,46 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
         final id = call.arguments?['id'] as String?;
         if (id == null) break;
 
-        if (widget.leading != null && widget.leading!.id == id) {
-          widget.leading!.onPressed();
-          break;
+        for (final item in _getAllItems()) {
+          if (item is GtkHeaderAction && item.id == id) {
+            item.onPressed?.call();
+            break;
+          }
         }
+        break;
+      case 'onHeaderSearchChanged':
+        final id = call.arguments?['id'] as String?;
+        final text = call.arguments?['text'] as String? ?? '';
+        if (id == null) break;
 
-        if (widget.actions != null) {
-          for (final action in widget.actions!) {
-            if (action.id == id) {
-              action.onPressed();
-              break;
-            }
+        for (final item in _getAllItems()) {
+          if (item is GtkHeaderSearchBar && item.id == id) {
+            item.onChanged?.call(text);
+            break;
+          }
+        }
+        break;
+      case 'onHeaderSearchSubmitted':
+        final id = call.arguments?['id'] as String?;
+        final text = call.arguments?['text'] as String? ?? '';
+        if (id == null) break;
+
+        for (final item in _getAllItems()) {
+          if (item is GtkHeaderSearchBar && item.id == id) {
+            item.onSubmitted?.call(text);
+            break;
+          }
+        }
+        break;
+      case 'onHeaderTabSelected':
+        final id = call.arguments?['id'] as String?;
+        final index = call.arguments?['index'] as int? ?? 0;
+        if (id == null) break;
+
+        for (final item in _getAllItems()) {
+          if (item is GtkHeaderTabBar && item.id == id) {
+            item.onTabSelected?.call(index);
+            break;
           }
         }
         break;
@@ -216,8 +272,9 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
   Future<void> _syncWithNative() async {
     try {
       await _ch.invokeMethod('setHeaderBarVisibility', {'visible': true});
+      final titleStr = widget.title is String ? widget.title as String : '';
       await _ch.invokeMethod('updateHeaderBar', {
-        'title': widget.title,
+        'title': titleStr,
         'subtitle': widget.subtitle ?? '',
         'showBackButton': widget.showBackButton,
         'backgroundColor': _colorToCss(widget.backgroundColor) ?? '',
@@ -226,11 +283,21 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
       final allActions = <Map<String, dynamic>>[];
       if (widget.leading != null) {
         final leadingJson = widget.leading!.toJson();
-        leadingJson['position'] = 'start';
+        leadingJson['position'] = widget.leading!.position ?? 'start';
         allActions.add(leadingJson);
       }
+      final titleItem = _resolvedTitleItem;
+      if (titleItem != null && widget.title is! String) {
+        final titleJson = titleItem.toJson();
+        titleJson['position'] = titleItem.position ?? 'center';
+        allActions.add(titleJson);
+      }
       if (widget.actions != null) {
-        allActions.addAll(widget.actions!.map((a) => a.toJson()));
+        for (final action in widget.actions!) {
+          final actionJson = action.toJson();
+          actionJson['position'] = action.position ?? 'end';
+          allActions.add(actionJson);
+        }
       }
 
       await _ch.invokeMethod('setHeaderActions', allActions);
@@ -283,19 +350,103 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
     }
   }
 
+  Widget _buildHeaderItemWidget(GtkHeaderItem item) {
+    if (item is GtkHeaderAction) {
+      return IconButton(
+        icon: _buildIcon(item.iconName) ??
+            (item.label != null
+                ? Text(item.label!)
+                : const Icon(Icons.widgets)),
+        tooltip: item.label,
+        onPressed: item.onPressed,
+      );
+    } else if (item is GtkHeaderTitle) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          if (item.subtitle != null && item.subtitle!.isNotEmpty)
+            Text(item.subtitle!, style: Theme.of(context).textTheme.labelSmall),
+        ],
+      );
+    } else if (item is GtkHeaderSearchBar) {
+      return Container(
+        width: item.width,
+        height: 34,
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        child: TextField(
+          controller: item.controller ?? TextEditingController(text: item.value),
+          onChanged: item.onChanged,
+          onSubmitted: item.onSubmitted,
+          style: const TextStyle(fontSize: 13, color: Colors.white),
+          decoration: InputDecoration(
+            hintText: item.placeholder,
+            hintStyle: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.5)),
+            prefixIcon: const Icon(Icons.search, size: 16, color: Colors.white70),
+            suffixIcon: item.onClear != null
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 14, color: Colors.white70),
+                    onPressed: item.onClear,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  )
+                : null,
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.12),
+            contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+      );
+    } else if (item is GtkHeaderTabBar) {
+      return Container(
+        height: 32,
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(item.tabs.length, (index) {
+            final isSelected = index == item.selectedIndex;
+            return GestureDetector(
+              onTap: () => item.onTabSelected?.call(index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  item.tabs[index],
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? Colors.white : Colors.white70,
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!isNativeControlSupported) {
       Widget? leadingWidget;
       if (widget.leading != null) {
-        leadingWidget = IconButton(
-          icon: _buildIcon(widget.leading!.iconName) ??
-              (widget.leading!.label != null
-                  ? Text(widget.leading!.label!)
-                  : const Icon(Icons.chevron_left)),
-          tooltip: widget.leading!.label,
-          onPressed: widget.leading!.onPressed,
-        );
+        leadingWidget = _buildHeaderItemWidget(widget.leading!);
       } else if (widget.showBackButton) {
         leadingWidget = IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -303,32 +454,31 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
         );
       }
 
+      Widget? titleWidget;
+      if (widget.title is String) {
+        final titleStr = widget.title as String;
+        titleWidget = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(titleStr),
+            if (widget.subtitle != null && widget.subtitle!.isNotEmpty)
+              Text(widget.subtitle!, style: Theme.of(context).textTheme.labelSmall),
+          ],
+        );
+      } else if (widget.title is GtkHeaderItem) {
+        titleWidget = _buildHeaderItemWidget(widget.title as GtkHeaderItem);
+      }
+
       final actionsWidgets = <Widget>[];
       if (widget.actions != null) {
         for (final action in widget.actions!) {
-          actionsWidgets.add(
-            IconButton(
-              icon: _buildIcon(action.iconName) ??
-                  (action.label != null
-                      ? Text(action.label!)
-                      : const Icon(Icons.widgets)),
-              tooltip: action.label,
-              onPressed: action.onPressed,
-            ),
-          );
+          actionsWidgets.add(_buildHeaderItemWidget(action));
         }
       }
 
       return AppBar(
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(widget.title),
-            if (widget.subtitle != null && widget.subtitle!.isNotEmpty)
-              Text(widget.subtitle!, style: Theme.of(context).textTheme.labelSmall),
-          ],
-        ),
+        title: titleWidget,
         centerTitle: true,
         leading: leadingWidget,
         actions: actionsWidgets,
