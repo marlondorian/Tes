@@ -9,11 +9,13 @@ class LibraryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final likedSongsPlaylist = PlaylistModel(
       id: 'liked_songs',
       title: 'Tus Me Gusta',
       description: 'Canciones que has marcado con me gusta',
-      coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
+      coverUrl:
+          'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
       category: 'Me gusta',
       songs: [
         const SongItem(
@@ -22,7 +24,7 @@ class LibraryPage extends StatelessWidget {
           artist: 'Nirvana',
           album: 'Nevermind',
           duration: Duration(minutes: 5, seconds: 1),
-          thumbnailUrl: 'https://img.youtube.com/vi/L_jWHffIx5E/hqdefault.jpg',
+          thumbnailUrl: 'https://img.youtube.com/vi/L_jWHffIx5E/maxresdefault.jpg',
         ),
         const SongItem(
           id: 'fJ9rUzIMcZQ',
@@ -30,13 +32,12 @@ class LibraryPage extends StatelessWidget {
           artist: 'Queen',
           album: 'A Night at the Opera',
           duration: Duration(minutes: 5, seconds: 55),
-          thumbnailUrl: 'https://img.youtube.com/vi/fJ9rUzIMcZQ/hqdefault.jpg',
+          thumbnailUrl: 'https://img.youtube.com/vi/fJ9rUzIMcZQ/maxresdefault.jpg',
         ),
       ],
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0B1A),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -48,33 +49,34 @@ class LibraryPage extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: const Color(0xFFA855F7),
-                    child: const Icon(Icons.person, color: Colors.white),
+                    backgroundColor: colorScheme.primary,
+                    child: Icon(Icons.person, color: colorScheme.onPrimary),
                   ),
                   const SizedBox(width: 12),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Tu Biblioteca',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: colorScheme.onSurface,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         'Colección personal & descargas',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12),
                       ),
                     ],
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+                    icon: Icon(
+                      Icons.add_rounded,
+                      color: colorScheme.onSurface,
+                      size: 28,
+                    ),
                     onPressed: () {
                       _showCreatePlaylistDialog(context);
                     },
@@ -89,7 +91,8 @@ class LibraryPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => PlaylistDetailPage(playlist: likedSongsPlaylist),
+                      builder: (_) =>
+                          PlaylistDetailPage(playlist: likedSongsPlaylist),
                     ),
                   );
                 },
@@ -97,17 +100,17 @@ class LibraryPage extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [
-                        Color(0xFFEC4899),
-                        Color(0xFF8B5CF6),
+                        colorScheme.primary,
+                        colorScheme.primary.withValues(alpha: 0.7),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFEC4899).withValues(alpha: 0.3),
+                        color: colorScheme.primary.withValues(alpha: 0.3),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
@@ -119,12 +122,12 @@ class LibraryPage extends StatelessWidget {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: colorScheme.onPrimary.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.favorite_rounded,
-                          color: Colors.white,
+                          color: colorScheme.onPrimary,
                           size: 32,
                         ),
                       ),
@@ -133,10 +136,10 @@ class LibraryPage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Tus Me Gusta',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: colorScheme.onPrimary,
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -144,8 +147,8 @@ class LibraryPage extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               '${likedSongsPlaylist.trackCount} canciones guardadas',
-                              style: const TextStyle(
-                                color: Colors.white70,
+                              style: TextStyle(
+                                color: colorScheme.onPrimary.withValues(alpha: 0.8),
                                 fontSize: 13,
                               ),
                             ),
@@ -154,13 +157,16 @@ class LibraryPage extends StatelessWidget {
                       ),
                       FloatingActionButton.small(
                         heroTag: 'play_liked_songs',
-                        backgroundColor: Colors.white,
+                        backgroundColor: colorScheme.onPrimary,
                         onPressed: () {
-                          audioController.playQueue(likedSongsPlaylist.songs, initialIndex: 0);
+                          audioController.playQueue(
+                            likedSongsPlaylist.songs,
+                            initialIndex: 0,
+                          );
                         },
-                        child: const Icon(
+                        child: Icon(
                           Icons.play_arrow_rounded,
-                          color: Color(0xFFEC4899),
+                          color: colorScheme.primary,
                         ),
                       ),
                     ],
@@ -174,19 +180,21 @@ class LibraryPage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _buildLibraryShortcutCard(
+                      context: context,
                       icon: Icons.history_rounded,
                       title: 'Historial',
                       subtitle: 'Recientes',
-                      color: const Color(0xFF3B82F6),
+                      color: colorScheme.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildLibraryShortcutCard(
+                      context: context,
                       icon: Icons.download_done_rounded,
                       title: 'Guardadas',
                       subtitle: 'Offline',
-                      color: const Color(0xFF10B981),
+                      color: colorScheme.secondary,
                     ),
                   ),
                 ],
@@ -194,10 +202,10 @@ class LibraryPage extends StatelessWidget {
               const SizedBox(height: 24),
 
               // Custom User Playlists
-              const Text(
+              Text(
                 'Tus Playlists',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: colorScheme.onSurface,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -213,7 +221,7 @@ class LibraryPage extends StatelessWidget {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1B2E),
+                      color: colorScheme.surface,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: ListTile(
@@ -228,24 +236,28 @@ class LibraryPage extends StatelessWidget {
                       ),
                       title: Text(
                         playlist.title,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       subtitle: Text(
                         '${playlist.trackCount} canciones • ${playlist.category}',
-                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        style: TextStyle(
+                          color: colorScheme.onSurface.withValues(alpha: 0.54),
+                          fontSize: 12,
+                        ),
                       ),
-                      trailing: const Icon(
+                      trailing: Icon(
                         Icons.chevron_right_rounded,
-                        color: Colors.white38,
+                        color: colorScheme.onSurface.withValues(alpha: 0.38),
                       ),
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => PlaylistDetailPage(playlist: playlist),
+                            builder: (_) =>
+                                PlaylistDetailPage(playlist: playlist),
                           ),
                         );
                       },
@@ -261,17 +273,19 @@ class LibraryPage extends StatelessWidget {
   }
 
   Widget _buildLibraryShortcutCard({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
     required Color color,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1B2E),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: colorScheme.onSurface.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,8 +298,8 @@ class LibraryPage extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.bold,
               fontSize: 15,
             ),
@@ -293,7 +307,7 @@ class LibraryPage extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
+            style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12),
           ),
         ],
       ),
@@ -302,36 +316,40 @@ class LibraryPage extends StatelessWidget {
 
   void _showCreatePlaylistDialog(BuildContext context) {
     final controller = TextEditingController();
+    final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E1B2E),
-          title: const Text(
+          backgroundColor: colorScheme.surface,
+          title: Text(
             'Nueva Playlist',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: colorScheme.onSurface),
           ),
           content: TextField(
             controller: controller,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
+            style: TextStyle(color: colorScheme.onSurface),
+            decoration: InputDecoration(
               hintText: 'Nombre de la playlist',
-              hintStyle: TextStyle(color: Colors.white38),
+              hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.38)),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54)),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFA855F7),
+                backgroundColor: colorScheme.primary,
               ),
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: const Text('Crear', style: TextStyle(color: Colors.white)),
+              child: Text('Crear', style: TextStyle(color: colorScheme.onPrimary)),
             ),
           ],
         );

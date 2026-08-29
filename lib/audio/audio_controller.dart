@@ -74,17 +74,18 @@ class AudioController extends ChangeNotifier {
   bool get isLoop => _isLoop;
   double get volume => _volume;
 
-  SongItem? get currentSong => (_currentIndex >= 0 && _currentIndex < _queue.length)
+  SongItem? get currentSong =>
+      (_currentIndex >= 0 && _currentIndex < _queue.length)
       ? _queue[_currentIndex]
       : (_currentVideoId != null
-          ? SongItem(
-              id: _currentVideoId!,
-              title: _currentTitle ?? 'Sin título',
-              artist: _currentArtist ?? 'Desconocido',
-              album: _currentAlbum,
-              thumbnailUrl: _currentThumbnailUrl,
-            )
-          : null);
+            ? SongItem(
+                id: _currentVideoId!,
+                title: _currentTitle ?? 'Sin título',
+                artist: _currentArtist ?? 'Desconocido',
+                album: _currentAlbum,
+                thumbnailUrl: _currentThumbnailUrl,
+              )
+            : null);
 
   Future<MyAudioHandler> ensureAudioHandler() async {
     if (_audioHandler != null) return _audioHandler!;
@@ -123,7 +124,9 @@ class AudioController extends ChangeNotifier {
     player.playerStateStream.listen((state) {
       _playerState = state;
       notifyListeners();
-      if (state.processingState == ProcessingState.completed) {
+      // Only advance queue if player is not currently loading a new track and reached completion
+      if (state.processingState == ProcessingState.completed &&
+          !_isLoadingStream) {
         if (_isLoop) {
           seek(Duration.zero);
           resume();
@@ -243,6 +246,46 @@ class AudioController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Cache for preloaded stream info: videoId -> streamUrl
+  final Map<String, String> _streamCache = {};
+  String? _prefetchedVideoId;
+
+  Future<void> _preloadNextSong() async {
+    if (_queue.isEmpty) return;
+    int nextIdx = -1;
+    if (_currentIndex + 1 < _queue.length) {
+      nextIdx = _currentIndex + 1;
+    } else if (_isLoop && _queue.isNotEmpty) {
+      nextIdx = 0;
+    }
+
+    if (nextIdx < 0 || nextIdx >= _queue.length) return;
+    final nextSong = _queue[nextIdx];
+
+    if (_streamCache.containsKey(nextSong.id) ||
+        _prefetchedVideoId == nextSong.id) {
+      return;
+    }
+
+    _prefetchedVideoId = nextSong.id;
+    final targetId = nextSong.id;
+
+    try {
+      final manifest = await _yt.videos.streamsClient.getManifest(targetId);
+      final selectedStream = manifest.muxed.withHighestBitrate();
+      final streamUrl = selectedStream.url.toString();
+
+      _streamCache[targetId] = streamUrl;
+
+      // Keep cache size bounded
+      if (_streamCache.length > 5) {
+        _streamCache.remove(_streamCache.keys.first);
+      }
+    } catch (_) {
+      // Ignore background prefetch errors silently
+    }
+  }
+
   Future<void> playSong(
     String videoId, {
     String? title,
@@ -265,7 +308,7 @@ class AudioController extends ChangeNotifier {
         final video = await _yt.videos.get(videoId);
         _currentTitle = video.title;
         _currentArtist ??= video.author;
-        _currentThumbnailUrl ??= video.thumbnails.highResUrl;
+        _currentThumbnailUrl ??= video.thumbnails.maxResUrl;
         notifyListeners();
       }
 
@@ -273,9 +316,17 @@ class AudioController extends ChangeNotifier {
         JustAudioMediaKit.title = "${_currentTitle!} - ${_currentArtist!}";
       }
 
-      final manifest = await _yt.videos.streamsClient.getManifest(videoId);
-      final selectedStream = manifest.muxed.withHighestBitrate();
-      final streamUrl = selectedStream.url.toString();
+      String? streamUrl;
+      if (_streamCache.containsKey(videoId)) {
+        streamUrl = _streamCache[videoId];
+      }
+
+      if (streamUrl == null) {
+        final manifest = await _yt.videos.streamsClient.getManifest(videoId);
+        final selectedStream = manifest.muxed.withHighestBitrate();
+        streamUrl = selectedStream.url.toString();
+        _streamCache[videoId] = streamUrl;
+      }
 
       final item = MediaItem(
         id: videoId,
@@ -287,11 +338,37 @@ class AudioController extends ChangeNotifier {
             : null,
       );
 
-      await handler.setAudioSource(AudioSource.uri(Uri.parse(streamUrl)), item);
-      await handler.play();
+      try {
+        await handler.setAudioSource(
+          AudioSource.uri(Uri.parse(streamUrl)),
+          item,
+        );
+        await handler.play();
+      } catch (streamError) {
+        // If pre-fetched URL expired, re-fetch fresh URL
+        _streamCache.remove(videoId);
+        final freshManifest = await _yt.videos.streamsClient.getManifest(
+          videoId,
+        );
+        final freshStream = freshManifest.muxed.withHighestBitrate();
+        final freshUrl = freshStream.url.toString();
+        _streamCache[videoId] = freshUrl;
+
+        await handler.setAudioSource(
+          AudioSource.uri(Uri.parse(freshUrl)),
+          item,
+        );
+        await handler.play();
+      }
+
       notifyListeners();
+
+      // Trigger preloading of the next track asynchronously
+      _preloadNextSong();
     } catch (e) {
-      // ignore
+      // Stream failed to play, reset loading state safely
+      _isLoadingStream = false;
+      notifyListeners();
     } finally {
       _isLoadingStream = false;
       notifyListeners();

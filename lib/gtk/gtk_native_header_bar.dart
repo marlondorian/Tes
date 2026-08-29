@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'gtk_scaffold.dart';
 import 'gtk_scaffold_channel.dart';
+import 'gtk_theme_manager.dart';
 import 'native_control_channel.dart';
 import '../pages/route_observer.dart';
 
@@ -74,7 +75,8 @@ class GtkNativeHeaderBar extends StatefulWidget implements PreferredSizeWidget {
     if (!isNativeControlSupported) {
       return const Size.fromHeight(kToolbarHeight);
     }
-    return Size.fromHeight(Platform.isMacOS ? 52.0 : 47.0);
+    final height = GtkThemeManager.instance.headerBarHeight;
+    return Size.fromHeight(Platform.isMacOS ? 52.0 : (height > 0 ? height : 47.0));
   }
 
   static bool get hasActiveHeaderBar =>
@@ -99,11 +101,19 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
   void initState() {
     super.initState();
     if (!isNativeControlSupported) return;
-    _height = Platform.isMacOS ? 52.0 : 47.0;
+    _height = GtkThemeManager.instance.headerBarHeight;
     _ch.addListener(_handleMethodCall);
+    GtkThemeManager.instance.addListener(_onThemeChanged);
     _activeInstances.add(this);
     _syncWithNative();
     _fetchNativeHeight();
+  }
+
+  void _onThemeChanged() {
+    if (!mounted) return;
+    setState(() {
+      _height = GtkThemeManager.instance.headerBarHeight;
+    });
   }
 
   @override
@@ -130,6 +140,7 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
     if (isNativeControlSupported) {
       routeObserver.unsubscribe(this);
       _ch.removeListener(_handleMethodCall);
+      GtkThemeManager.instance.removeListener(_onThemeChanged);
       _activeInstances.remove(this);
       if (_activeInstances.isEmpty && !GtkScaffold.hasActiveScaffold) {
         _hideNative();
@@ -446,6 +457,7 @@ class _GtkNativeHeaderBarState extends State<GtkNativeHeaderBar>
         title: titleWidget,
         centerTitle: true,
         leading: leadingWidget,
+        automaticallyImplyLeading: false,
         actions: actionsWidgets,
         backgroundColor: widget.backgroundColor,
       );

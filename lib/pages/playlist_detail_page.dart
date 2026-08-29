@@ -20,28 +20,32 @@ class PlaylistDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: NativeAppBar(
         leading: GtkHeaderAction(
           id: "playlist-back",
           onPressed: () {
-            Navigator.pop(context);
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context); // Solo regresa si hay una pantalla previa
+            }
           },
           iconName: "go-previous-symbolic",
         ),
         backgroundColor: Colors.transparent,
       ),
-      backgroundColor: const Color(0xFF0F0B1A),
+      backgroundColor: colorScheme.surface,
       body: CustomScrollView(
         slivers: [
           // Collapsible Header Bar
           SliverAppBar(
-            leading: SizedBox(),
+            leading: const SizedBox(),
             expandedHeight: 320.0,
             pinned: true,
-            backgroundColor: const Color(0xFF1B152B),
-            iconTheme: const IconThemeData(color: Colors.white),
+            backgroundColor: colorScheme.surface,
+            iconTheme: IconThemeData(color: colorScheme.onSurface),
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -51,8 +55,8 @@ class PlaylistDetailPage extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF6D28D9).withValues(alpha: 0.8),
-                          const Color(0xFF0F0B1A),
+                          colorScheme.primary.withValues(alpha: 0.6),
+                          colorScheme.surface,
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -71,7 +75,7 @@ class PlaylistDetailPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.5),
+                              color: Colors.black.withValues(alpha: 0.4),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -85,19 +89,23 @@ class PlaylistDetailPage extends StatelessWidget {
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
                                       Container(
-                                        color: Colors.purple.shade900,
-                                        child: const Icon(
+                                        color: colorScheme.primary.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        child: Icon(
                                           Icons.library_music_rounded,
-                                          color: Colors.white,
+                                          color: colorScheme.onSurface,
                                           size: 50,
                                         ),
                                       ),
                                 )
                               : Container(
-                                  color: Colors.purple.shade900,
-                                  child: const Icon(
+                                  color: colorScheme.primary.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  child: Icon(
                                     Icons.library_music_rounded,
-                                    color: Colors.white,
+                                    color: colorScheme.onSurface,
                                     size: 50,
                                   ),
                                 ),
@@ -106,8 +114,8 @@ class PlaylistDetailPage extends StatelessWidget {
                       const SizedBox(height: 12),
                       Text(
                         playlist.title,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
@@ -116,7 +124,7 @@ class PlaylistDetailPage extends StatelessWidget {
                       Text(
                         '${playlist.description} • ${playlist.trackCount} canciones, ${_formatDuration(playlist.totalDuration)}',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
                           fontSize: 13,
                         ),
                       ),
@@ -146,19 +154,19 @@ class PlaylistDetailPage extends StatelessWidget {
                           );
                         }
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.play_arrow_rounded,
-                        color: Colors.white,
+                        color: colorScheme.onPrimary,
                       ),
-                      label: const Text(
+                      label: Text(
                         'Reproducir Todo',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: colorScheme.onPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFA855F7),
+                        backgroundColor: colorScheme.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -175,12 +183,14 @@ class PlaylistDetailPage extends StatelessWidget {
                         audioController.playQueue(shuffled, initialIndex: 0);
                       }
                     },
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.shuffle_rounded,
-                      color: Colors.white,
+                      color: colorScheme.onSurface,
                     ),
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      backgroundColor: colorScheme.onSurface.withValues(
+                        alpha: 0.1,
+                      ),
                       padding: const EdgeInsets.all(14),
                     ),
                   ),
@@ -206,7 +216,7 @@ class PlaylistDetailPage extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: isCurrentPlaying
-                          ? const Color(0xFFA855F7).withValues(alpha: 0.15)
+                          ? colorScheme.primary.withValues(alpha: 0.15)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -215,14 +225,16 @@ class PlaylistDetailPage extends StatelessWidget {
                         width: 40,
                         child: Center(
                           child: isCurrentPlaying
-                              ? const Icon(
+                              ? Icon(
                                   Icons.bar_chart_rounded,
-                                  color: Color(0xFFA855F7),
+                                  color: colorScheme.primary,
                                 )
                               : Text(
                                   '${index + 1}',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.5),
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.5,
+                                    ),
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -234,8 +246,8 @@ class PlaylistDetailPage extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: isCurrentPlaying
-                              ? const Color(0xFFA855F7)
-                              : Colors.white,
+                              ? colorScheme.primary
+                              : colorScheme.onSurface,
                           fontWeight: isCurrentPlaying
                               ? FontWeight.bold
                               : FontWeight.normal,
@@ -246,7 +258,7 @@ class PlaylistDetailPage extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                       trailing: Row(
@@ -256,14 +268,18 @@ class PlaylistDetailPage extends StatelessWidget {
                             Text(
                               '${song.duration!.inMinutes}:${(song.duration!.inSeconds % 60).toString().padLeft(2, '0')}',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.4),
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.4,
+                                ),
                                 fontSize: 12,
                               ),
                             ),
                           IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.more_vert,
-                              color: Colors.white54,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.54,
+                              ),
                             ),
                             onPressed: () {},
                           ),

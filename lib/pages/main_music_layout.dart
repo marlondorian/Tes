@@ -35,115 +35,104 @@ class _MainMusicLayoutState extends State<MainMusicLayout> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0B1A),
-      bottomNavigationBar: GtkBottomNavigationBar(
-        currentIndex: _currentTabIndex,
-        onTap: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
-        },
-        items: const [
-          GtkBottomNavigationItem(
-            id: "0",
-            label: 'Inicio',
-            iconName: 'go-home-symbolic',
-          ),
-          GtkBottomNavigationItem(
-            id: "1",
-            label: 'Playlists',
-            iconName: 'media-playlist-repeat-symbolic',
-          ),
-          GtkBottomNavigationItem(
-            id: "2",
-            label: 'Buscar',
-            iconName: 'system-search-symbolic',
-          ),
-          GtkBottomNavigationItem(
-            id: "3",
-            label: 'Biblioteca',
-            iconName: 'folder-music-symbolic',
-          ),
-        ],
-      ),
-      appBar: GtkNativeHeaderBar(
-        leading: GtkHeaderTabBar(
-          id: 'main-tabbar',
-          tabs: _tabTitles,
-          selectedIndex: _currentTabIndex,
-          onTabSelected: (index) {
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        bottomNavigationBar: GtkBottomNavigationBar(
+          currentIndex: _currentTabIndex,
+          onTap: (index) {
             setState(() {
               _currentTabIndex = index;
             });
           },
+          items: const [
+            GtkBottomNavigationItem(
+              id: "0",
+              label: 'Inicio',
+              iconName: 'go-home-symbolic',
+            ),
+            GtkBottomNavigationItem(
+              id: "1",
+              label: 'Playlists',
+              iconName: 'media-playlist-repeat-symbolic',
+            ),
+            GtkBottomNavigationItem(
+              id: "2",
+              label: 'Buscar',
+              iconName: 'system-search-symbolic',
+            ),
+            GtkBottomNavigationItem(
+              id: "3",
+              label: 'Biblioteca',
+              iconName: 'folder-music-symbolic',
+            ),
+          ],
         ),
-        backgroundColor: const Color(0xFF1E1B2E),
-        actions: [
-          GtkHeaderSearchBar(
-            id: 'header-search',
-            placeholder: 'Buscar música...',
+        drawer: Drawer(
+          child: ListView(
+            children: [
+              ListTile(
+                title: Text('Settings'),
+                leading: Icon(Icons.settings),
+                onTap: () {
+                  // Handle settings tap
+                  Navigator.pop(context); // Close the drawer
+                },
+              ),
+            ],
           ),
-          GtkHeaderAction(
-            id: 'info',
-            iconName: 'dialog-information-symbolic',
-            label: 'Acerca de',
-            onPressed: () {
-              showAboutDialog(
-                context: context,
-                applicationName: 'Midnight Music Player',
-                applicationVersion: '2.0.0',
-                applicationLegalese: '© 2026 Midnight Audio Lab',
-              );
+        ),
+        body: Stack(
+          children: [
+            // Main Body Tabs
+            switch (_currentTabIndex) {
+              0 => const MusicHomePage(),
+              1 => const PlaylistsPage(),
+              2 => const SearchMusicPage(),
+              3 => const LibraryPage(),
+              _ => const MusicHomePage(),
             },
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          // Main Body Tabs
-          IndexedStack(index: _currentTabIndex, children: _pages),
+            // Floating Mini Player & Bottom Navigation Bar
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Persistent Floating Mini Player
+                  MiniPlayerWidget(
+                    onTapExpand: () {
+                      setState(() {
+                        _isPlayerExpanded = true;
+                      });
+                    },
+                  ),
 
-          // Floating Mini Player & Bottom Navigation Bar
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Persistent Floating Mini Player
-                MiniPlayerWidget(
-                  onTapExpand: () {
+                  // GTK Modern Bottom Navigation Bar
+                ],
+              ),
+            ),
+
+            // Expandable Fullscreen Player Sheet Overlay
+            if (_isPlayerExpanded)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: ExpandedPlayerWidget(
+                  onClose: () {
                     setState(() {
-                      _isPlayerExpanded = true;
+                      _isPlayerExpanded = false;
                     });
                   },
                 ),
-
-                // GTK Modern Bottom Navigation Bar
-              ],
-            ),
-          ),
-
-          // Expandable Fullscreen Player Sheet Overlay
-          if (_isPlayerExpanded)
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              top: 0,
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: ExpandedPlayerWidget(
-                onClose: () {
-                  setState(() {
-                    _isPlayerExpanded = false;
-                  });
-                },
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

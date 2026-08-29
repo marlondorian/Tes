@@ -62,6 +62,7 @@ NativeControlManager::~NativeControlManager() {
     g_object_unref(action_bar_css_provider_);
     action_bar_css_provider_ = nullptr;
   }
+  UnsubscribeFromThemeChanges();
 }
 
 void NativeControlManager::SetupChannels(FlBinaryMessenger* messenger) {
@@ -92,6 +93,8 @@ void NativeControlManager::SetupChannels(FlBinaryMessenger* messenger) {
                                             nullptr);
 
   AttachScrollHandler(GTK_WIDGET(fixed_container_));
+  SubscribeToThemeChanges();
+  SendGtkThemeToFlutter();
 }
 
 void NativeControlManager::GrabFlutterFocus() {
@@ -224,6 +227,8 @@ void NativeControlManager::OnScaffoldMethodCall(FlMethodChannel* channel,
     response = self->HandleApplyCustomCss(args);
   } else if (g_strcmp0(method, "getHeaderBarHeight") == 0) {
     response = self->HandleGetHeaderBarHeight(args);
+  } else if (g_strcmp0(method, "getGtkTheme") == 0) {
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(self->BuildGtkThemeValue()));
   } else {
     response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
   }
@@ -713,6 +718,14 @@ FlMethodResponse* NativeControlManager::HandleSetHeaderActions(FlValue* args) {
   if (args == nullptr || fl_value_get_type(args) != FL_VALUE_TYPE_LIST) {
     for (auto& item : header_actions_) {
       if (item->widget != nullptr) {
+        if (gtk_widget_get_parent(item->widget) == GTK_WIDGET(header_bar_)) {
+          gtk_container_remove(GTK_CONTAINER(header_bar_), item->widget);
+        } else if (gtk_widget_get_parent(item->widget) != nullptr) {
+          GtkWidget* parent = gtk_widget_get_parent(item->widget);
+          if (gtk_widget_get_parent(parent) == GTK_WIDGET(header_bar_)) {
+            gtk_container_remove(GTK_CONTAINER(header_bar_), parent);
+          }
+        }
         gtk_widget_destroy(item->widget);
       }
     }
@@ -771,10 +784,29 @@ FlMethodResponse* NativeControlManager::HandleSetHeaderActions(FlValue* args) {
     return FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   }
 
+  // Collect top-level containers already removed to avoid double-remove/destroy
+  std::vector<GtkWidget*> removed_containers;
   for (auto& item : header_actions_) {
-    if (item->widget != nullptr) {
-      gtk_widget_destroy(item->widget);
+    if (item->widget == nullptr) continue;
+    GtkWidget* parent = gtk_widget_get_parent(item->widget);
+    if (parent == GTK_WIDGET(header_bar_)) {
+      // Direct child of headerbar (e.g. action buttons)
+      gtk_container_remove(GTK_CONTAINER(header_bar_), item->widget);
+    } else if (parent != nullptr) {
+      // Child inside a container (e.g. tab buttons inside a GtkBox)
+      GtkWidget* grandparent = gtk_widget_get_parent(parent);
+      if (grandparent == GTK_WIDGET(header_bar_)) {
+        bool already_removed = false;
+        for (GtkWidget* c : removed_containers) {
+          if (c == parent) { already_removed = true; break; }
+        }
+        if (!already_removed) {
+          gtk_container_remove(GTK_CONTAINER(header_bar_), parent);
+          removed_containers.push_back(parent);
+        }
+      }
     }
+    gtk_widget_destroy(item->widget);
   }
   header_actions_.clear();
 
@@ -1149,4 +1181,116 @@ FlMethodResponse* NativeControlManager::HandleGetHeaderBarHeight(FlValue* /*args
   g_autoptr(FlValue) result = fl_value_new_int(height);
   return FL_METHOD_RESPONSE(fl_method_success_response_new(result));
 }
+
+// ---------------------- GTK THEME EXTRACTION ----------------------
+
+FlValue* NativeControlManager::BuildGtkThemeValue() {
+  GtkStyleContext* context = nullptr;
+  if (header_bar_ != nullptr && GTK_IS_WIDGET(header_bar_)) {
+    context = gtk_widget_get_style_context(GTK_WIDGET(header_bar_));
+  } else if (fl_view_widget_ != nullptr && GTK_IS_WIDGET(fl_view_widget_)) {
+    context = gtk_widget_get_style_context(fl_view_widget_);
+  }
+
+  GdkRGBA bg_color, fg_color, base_color, text_color, sel_bg_color, sel_fg_color;
+  
+  bool has_bg = context && gtk_style_context_lookup_color(context, "theme_bg_color", &bg_color);
+  if (!has_bg) {
+    gdk_rgba_parse(&bg_color, "#0F0B1A");
+  }
+
+  bool has_fg = context && gtk_style_context_lookup_color(context, "theme_fg_color", &fg_color);
+  if (!has_fg) {
+    gdk_rgba_parse(&fg_color, "#FFFFFF");
+  }
+
+  bool has_base = context && gtk_style_context_lookup_color(context, "theme_base_color", &base_color);
+  if (!has_base) {
+    gdk_rgba_parse(&base_color, "#1E1B2E");
+  }
+
+  bool has_text = context && gtk_style_context_lookup_color(context, "theme_text_color", &text_color);
+  if (!has_text) {
+    gdk_rgba_parse(&text_color, "#EEEEEE");
+  }
+
+  bool has_sel_bg = context && gtk_style_context_lookup_color(context, "theme_selected_bg_color", &sel_bg_color);
+  if (!has_sel_bg) {
+    gdk_rgba_parse(&sel_bg_color, "#A855F7");
+  }
+
+  bool has_sel_fg = context && gtk_style_context_lookup_color(context, "theme_selected_fg_color", &sel_fg_color);
+  if (!has_sel_fg) {
+    gdk_rgba_parse(&sel_fg_color, "#FFFFFF");
+  }
+
+  double header_height = 47.0;
+  if (header_bar_ != nullptr && GTK_IS_WIDGET(header_bar_)) {
+    int min_h = 0, nat_h = 0;
+    gtk_widget_get_preferred_height(GTK_WIDGET(header_bar_), &min_h, &nat_h);
+    header_height = static_cast<double>(nat_h > 0 ? nat_h : gtk_widget_get_allocated_height(GTK_WIDGET(header_bar_)));
+    if (header_height <= 0) header_height = 47.0;
+  }
+
+  auto color_to_css = [](const GdkRGBA& col) -> std::string {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "rgba(%d,%d,%d,%.3f)",
+             static_cast<int>(col.red * 255),
+             static_cast<int>(col.green * 255),
+             static_cast<int>(col.blue * 255),
+             col.alpha);
+    return std::string(buf);
+  };
+
+  double luminance = 0.2126 * bg_color.red + 0.7152 * bg_color.green + 0.0722 * bg_color.blue;
+  bool is_dark = luminance < 0.5;
+
+  FlValue* result = fl_value_new_map();
+  fl_value_set_string_take(result, "windowBg", fl_value_new_string(color_to_css(bg_color).c_str()));
+  fl_value_set_string_take(result, "windowFg", fl_value_new_string(color_to_css(fg_color).c_str()));
+  fl_value_set_string_take(result, "baseBg", fl_value_new_string(color_to_css(base_color).c_str()));
+  fl_value_set_string_take(result, "baseFg", fl_value_new_string(color_to_css(text_color).c_str()));
+  fl_value_set_string_take(result, "selectedBg", fl_value_new_string(color_to_css(sel_bg_color).c_str()));
+  fl_value_set_string_take(result, "selectedFg", fl_value_new_string(color_to_css(sel_fg_color).c_str()));
+  fl_value_set_string_take(result, "isDark", fl_value_new_bool(is_dark));
+  fl_value_set_string_take(result, "headerBarHeight", fl_value_new_float(header_height));
+
+  return result;
+}
+
+void NativeControlManager::SubscribeToThemeChanges() {
+  GtkSettings* settings = gtk_settings_get_default();
+  if (settings != nullptr) {
+    theme_name_signal_id_ = g_signal_connect(settings, "notify::gtk-theme-name", G_CALLBACK(OnGtkThemeChanged), this);
+    prefer_dark_signal_id_ = g_signal_connect(settings, "notify::gtk-application-prefer-dark-theme", G_CALLBACK(OnGtkThemeChanged), this);
+  }
+}
+
+void NativeControlManager::UnsubscribeFromThemeChanges() {
+  GtkSettings* settings = gtk_settings_get_default();
+  if (settings != nullptr) {
+    if (theme_name_signal_id_ != 0) {
+      g_signal_handler_disconnect(settings, theme_name_signal_id_);
+      theme_name_signal_id_ = 0;
+    }
+    if (prefer_dark_signal_id_ != 0) {
+      g_signal_handler_disconnect(settings, prefer_dark_signal_id_);
+      prefer_dark_signal_id_ = 0;
+    }
+  }
+}
+
+void NativeControlManager::OnGtkThemeChanged(GObject* /*object*/, GParamSpec* /*pspec*/, gpointer user_data) {
+  auto* self = static_cast<NativeControlManager*>(user_data);
+  if (self != nullptr) {
+    self->SendGtkThemeToFlutter();
+  }
+}
+
+void NativeControlManager::SendGtkThemeToFlutter() {
+  if (scaffold_channel_ == nullptr) return;
+  g_autoptr(FlValue) theme_val = BuildGtkThemeValue();
+  fl_method_channel_invoke_method(scaffold_channel_, "onGtkThemeChanged", theme_val, nullptr, nullptr, nullptr);
+}
+
 

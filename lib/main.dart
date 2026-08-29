@@ -21,6 +21,7 @@ import 'pages/search_widget.dart';
 // }
 
 import 'pages/main_music_layout.dart';
+import 'gtk/gtk_theme_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,30 +35,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Midnight Music Player',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          brightness: Brightness.dark,
-          seedColor: const Color(0xFFA855F7),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0F0B1A),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          brightness: Brightness.dark,
-          seedColor: const Color(0xFFA855F7),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0F0B1A),
-        useMaterial3: true,
-      ),
-      themeMode: ThemeMode.dark,
-      home: const MainMusicLayout(),
-      navigatorObservers: [routeObserver],
+    return ListenableBuilder(
+      listenable: GtkThemeManager.instance,
+      builder: (context, _) {
+        final theme = GtkThemeManager.instance.themeData;
+        final isDark = GtkThemeManager.instance.isDark;
+
+        return MaterialApp(
+          title: 'Midnight Music Player',
+          debugShowCheckedModeBanner: false,
+          theme: theme,
+          darkTheme: theme,
+          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+          home: const MainMusicLayout(),
+          navigatorObservers: [routeObserver],
+        );
+      },
     );
   }
 }

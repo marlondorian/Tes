@@ -30,23 +30,25 @@ class MiniPlayerWidget extends StatelessWidget {
         final artist = audioController.currentArtist ?? 'Artista desconocido';
         final thumbnailUrl = audioController.currentThumbnailUrl;
 
+        final colorScheme = Theme.of(context).colorScheme;
+
         return GestureDetector(
           onTap: onTapExpand,
           behavior: HitTestBehavior.opaque,
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1B2E).withValues(alpha: 0.92),
+              color: colorScheme.surface.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(16.0),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
               ],
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: colorScheme.onSurface.withValues(alpha: 0.1),
                 width: 1,
               ),
             ),
@@ -60,9 +62,9 @@ class MiniPlayerWidget extends StatelessWidget {
                     height: 2.5,
                     child: LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: Colors.white.withValues(alpha: 0.1),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFFA855F7), // Purple accent
+                      backgroundColor: colorScheme.onSurface.withValues(alpha: 0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        colorScheme.primary,
                       ),
                     ),
                   ),
@@ -85,10 +87,10 @@ class MiniPlayerWidget extends StatelessWidget {
                                   errorBuilder: (context, error, stackTrace) => Container(
                                     width: 46,
                                     height: 46,
-                                    color: Colors.deepPurple.shade900,
-                                    child: const Icon(
+                                    color: colorScheme.primary.withValues(alpha: 0.2),
+                                    child: Icon(
                                       Icons.music_note,
-                                      color: Colors.white70,
+                                      color: colorScheme.onSurface.withValues(alpha: 0.7),
                                       size: 24,
                                     ),
                                   ),
@@ -96,10 +98,10 @@ class MiniPlayerWidget extends StatelessWidget {
                               : Container(
                                   width: 46,
                                   height: 46,
-                                  color: Colors.deepPurple.shade900,
-                                  child: const Icon(
+                                  color: colorScheme.primary.withValues(alpha: 0.2),
+                                  child: Icon(
                                     Icons.music_note,
-                                    color: Colors.white70,
+                                    color: colorScheme.onSurface.withValues(alpha: 0.7),
                                     size: 24,
                                   ),
                                 ),
@@ -116,8 +118,8 @@ class MiniPlayerWidget extends StatelessWidget {
                                 songTitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: colorScheme.onSurface,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14.0,
                                 ),
@@ -128,7 +130,7 @@ class MiniPlayerWidget extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.6),
+                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                                   fontSize: 12.0,
                                 ),
                               ),
@@ -138,15 +140,15 @@ class MiniPlayerWidget extends StatelessWidget {
 
                         // Action Buttons: Play/Pause, Next
                         if (isLoading)
-                          const Padding(
-                            padding: EdgeInsets.all(8.0),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
                             child: SizedBox(
                               width: 24,
                               height: 24,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  Color(0xFFA855F7),
+                                  colorScheme.primary,
                                 ),
                               ),
                             ),
@@ -155,7 +157,7 @@ class MiniPlayerWidget extends StatelessWidget {
                           IconButton(
                             icon: Icon(
                               isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                              color: Colors.white,
+                              color: colorScheme.onSurface,
                               size: 28.0,
                             ),
                             onPressed: () {
@@ -164,9 +166,9 @@ class MiniPlayerWidget extends StatelessWidget {
                           ),
 
                         IconButton(
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.skip_next_rounded,
-                            color: Colors.white70,
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
                             size: 26.0,
                           ),
                           onPressed: () {

@@ -23,7 +23,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
       artist: 'Nirvana',
       album: 'Nevermind',
       duration: Duration(minutes: 5, seconds: 1),
-      thumbnailUrl: 'https://img.youtube.com/vi/L_jWHffIx5E/hqdefault.jpg',
+      thumbnailUrl: 'https://img.youtube.com/vi/L_jWHffIx5E/maxresdefault.jpg',
     ),
     SongItem(
       id: 'fJ9rUzIMcZQ',
@@ -31,7 +31,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
       artist: 'Queen',
       album: 'A Night at the Opera',
       duration: Duration(minutes: 5, seconds: 55),
-      thumbnailUrl: 'https://img.youtube.com/vi/fJ9rUzIMcZQ/hqdefault.jpg',
+      thumbnailUrl: 'https://img.youtube.com/vi/fJ9rUzIMcZQ/maxresdefault.jpg',
     ),
     SongItem(
       id: 'hTWKbfoikeg',
@@ -39,7 +39,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
       artist: 'Linkin Park',
       album: 'Meteora',
       duration: Duration(minutes: 3, seconds: 7),
-      thumbnailUrl: 'https://img.youtube.com/vi/hTWKbfoikeg/hqdefault.jpg',
+      thumbnailUrl: 'https://img.youtube.com/vi/hTWKbfoikeg/maxresdefault.jpg',
     ),
     SongItem(
       id: '1w7OgIMMRcE',
@@ -47,7 +47,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
       artist: 'Guns N Roses',
       album: 'Appetite for Destruction',
       duration: Duration(minutes: 5, seconds: 56),
-      thumbnailUrl: 'https://img.youtube.com/vi/1w7OgIMMRcE/hqdefault.jpg',
+      thumbnailUrl: 'https://img.youtube.com/vi/1w7OgIMMRcE/maxresdefault.jpg',
     ),
   ];
 
@@ -68,7 +68,6 @@ class _MusicHomePageState extends State<MusicHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0B1A),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 120),
@@ -82,17 +81,21 @@ class _MusicHomePageState extends State<MusicHomePage> {
                 padding: const EdgeInsets.all(20.0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [
-                      Color(0xFF8B5CF6),
-                      Color(0xFF6D28D9),
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.7),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.35),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.35),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -102,15 +105,19 @@ class _MusicHomePageState extends State<MusicHomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Text(
                         'FEATURED MIX',
                         style: TextStyle(
-                          color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.2,
@@ -118,10 +125,10 @@ class _MusicHomePageState extends State<MusicHomePage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       'Midnight Soundscapes',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
@@ -130,7 +137,9 @@ class _MusicHomePageState extends State<MusicHomePage> {
                     Text(
                       'Explora las mejores selecciones musicales del día.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary.withValues(alpha: 0.85),
                         fontSize: 13,
                       ),
                     ),
@@ -139,16 +148,15 @@ class _MusicHomePageState extends State<MusicHomePage> {
                       onPressed: () {
                         audioController.playQueue(_quickPicks, initialIndex: 0);
                       },
-                      icon: const Icon(Icons.play_arrow_rounded, color: Color(0xFF6D28D9)),
+                      icon: const Icon(Icons.play_arrow_rounded),
                       label: const Text(
                         'Escuchar Ahora',
-                        style: TextStyle(
-                          color: Color(0xFF6D28D9),
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -163,11 +171,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
                 padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Text(
                   'Selección Rápida',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
               SizedBox(
@@ -176,12 +180,16 @@ class _MusicHomePageState extends State<MusicHomePage> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   itemCount: _quickPicks.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 14),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 14),
                   itemBuilder: (context, index) {
                     final song = _quickPicks[index];
                     return GestureDetector(
                       onTap: () {
-                        audioController.playQueue(_quickPicks, initialIndex: index);
+                        audioController.playQueue(
+                          _quickPicks,
+                          initialIndex: index,
+                        );
                       },
                       child: SizedBox(
                         width: 130,
@@ -197,12 +205,16 @@ class _MusicHomePageState extends State<MusicHomePage> {
                                     width: 130,
                                     height: 130,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      width: 130,
-                                      height: 130,
-                                      color: Colors.deepPurple.shade800,
-                                      child: const Icon(Icons.music_note, color: Colors.white),
-                                    ),
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              width: 130,
+                                              height: 130,
+                                              color: Colors.deepPurple.shade800,
+                                              child: const Icon(
+                                                Icons.music_note,
+                                              ),
+                                            ),
                                   ),
                                 ),
                                 Positioned(
@@ -210,10 +222,8 @@ class _MusicHomePageState extends State<MusicHomePage> {
                                   bottom: 6,
                                   child: CircleAvatar(
                                     radius: 16,
-                                    backgroundColor: const Color(0xFFA855F7),
                                     child: const Icon(
                                       Icons.play_arrow_rounded,
-                                      color: Colors.white,
                                       size: 20,
                                     ),
                                   ),
@@ -226,7 +236,6 @@ class _MusicHomePageState extends State<MusicHomePage> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Colors.white,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
                               ),
@@ -235,10 +244,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
                               song.artist,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                fontSize: 11,
-                              ),
+                              style: TextStyle(fontSize: 11),
                             ),
                           ],
                         ),
@@ -250,14 +256,16 @@ class _MusicHomePageState extends State<MusicHomePage> {
 
               // Curated Playlists Preview
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 12.0,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       'Playlists Recomendadas',
                       style: TextStyle(
-                        color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -266,10 +274,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
                       onPressed: () {
                         // Switch tab or navigate
                       },
-                      child: const Text(
-                        'Ver todas',
-                        style: TextStyle(color: Color(0xFFA855F7)),
-                      ),
+                      child: const Text('Ver todas'),
                     ),
                   ],
                 ),
@@ -280,7 +285,8 @@ class _MusicHomePageState extends State<MusicHomePage> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   itemCount: samplePlaylists.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 14),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 14),
                   itemBuilder: (context, idx) {
                     final playlist = samplePlaylists[idx];
                     return GestureDetector(
@@ -288,7 +294,8 @@ class _MusicHomePageState extends State<MusicHomePage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => PlaylistDetailPage(playlist: playlist),
+                            builder: (_) =>
+                                PlaylistDetailPage(playlist: playlist),
                           ),
                         );
                       },
@@ -312,17 +319,13 @@ class _MusicHomePageState extends State<MusicHomePage> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Colors.white,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                               ),
                             ),
                             Text(
                               '${playlist.trackCount} canciones',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                fontSize: 11,
-                              ),
+                              style: TextStyle(fontSize: 11),
                             ),
                           ],
                         ),
@@ -337,22 +340,20 @@ class _MusicHomePageState extends State<MusicHomePage> {
                 padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 child: Text(
                   'Para Ti (YouTube Music)',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
               FutureBuilder<List<HomeSection>>(
                 future: _sectionsFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(24.0),
+                        padding: const EdgeInsets.all(24.0),
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA855F7)),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       ),
                     );
@@ -363,7 +364,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Text(
                         'No hay secciones dinámicas disponibles en este momento.',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                        style: TextStyle(),
                       ),
                     );
                   }
@@ -371,31 +372,30 @@ class _MusicHomePageState extends State<MusicHomePage> {
                   return Column(
                     children: sections.take(3).map((sec) {
                       return ExpansionTile(
-                        iconColor: const Color(0xFFA855F7),
-                        collapsedIconColor: Colors.white60,
                         title: Text(
                           sec.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         children: sec.contents.take(4).map((item) {
                           final name = item is SongDetailed
                               ? item.name
                               : (item is SongFull
-                                  ? item.name
-                                  : (item is AlbumDetailed ? item.name : 'Música'));
+                                    ? item.name
+                                    : (item is AlbumDetailed
+                                          ? item.name
+                                          : 'Música'));
                           final artistName = item is SongDetailed
                               ? item.artist.name
                               : (item is SongFull
-                                  ? item.artist.name
-                                  : (item is AlbumDetailed ? item.artist.name : ''));
+                                    ? item.artist.name
+                                    : (item is AlbumDetailed
+                                          ? item.artist.name
+                                          : ''));
 
                           return ListTile(
-                            leading: const Icon(Icons.music_note, color: Color(0xFFA855F7)),
-                            title: Text(name, style: const TextStyle(color: Colors.white)),
-                            subtitle: Text(artistName, style: const TextStyle(color: Colors.white54)),
+                            leading: const Icon(Icons.music_note),
+                            title: Text(name),
+                            subtitle: Text(artistName),
                             onTap: () {
                               if (item is SongDetailed) {
                                 audioController.playSong(
@@ -403,7 +403,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
                                   title: item.name,
                                   artist: item.artist.name,
                                   thumbnailUrl: item.thumbnails.isNotEmpty
-                                      ? item.thumbnails.first.url
+                                      ? item.thumbnails.last.url
                                       : null,
                                 );
                               }

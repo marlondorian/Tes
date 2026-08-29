@@ -145,6 +145,7 @@ static void my_application_activate(GApplication* application) {
   // GtkHeaderBar packed as first child of main_box — CSD window has no WM titlebar,
   // so this IS the only header bar. No gtk_window_set_titlebar() needed.
   GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
+  gtk_style_context_add_class(gtk_widget_get_style_context(GTK_WIDGET(header_bar)), "titlebar");
   gtk_header_bar_set_title(header_bar, "macos_native_widgets");
   gtk_header_bar_set_show_close_button(header_bar, TRUE);
   gtk_widget_set_can_focus(GTK_WIDGET(header_bar), FALSE);

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:dart_ytmusic_api/yt_music.dart';
 import 'package:dart_ytmusic_api/types.dart';
 import '../audio/audio_controller.dart';
+import 'artist_detail_page.dart';
+import 'album_detail_page.dart';
 
 final ytmusic = YTMusic();
 
@@ -18,9 +20,10 @@ class _SongSearchWidgetState extends State<SongSearchWidget> {
   final TextEditingController _queryController = TextEditingController();
   bool _isLoading = false;
   String? _error;
-  List<SongDetailed> _results = [];
+  List<SearchResult> _results = [];
   Duration _dragPosition = Duration.zero;
   bool _isDragging = false;
+  String _selectedFilter = 'Canciones';
 
   @override
   void dispose() {
@@ -32,7 +35,7 @@ class _SongSearchWidgetState extends State<SongSearchWidget> {
     final query = _queryController.text.trim();
     if (query.isEmpty) {
       setState(() {
-        _error = 'Escribe algo para buscar canciones';
+        _error = 'Escribe algo para buscar';
         _results = [];
       });
       return;
@@ -45,9 +48,24 @@ class _SongSearchWidgetState extends State<SongSearchWidget> {
     });
 
     try {
-      final songs = await ytmusic.searchSongs(query);
+      List<SearchResult> results = [];
+      switch (_selectedFilter) {
+        case 'Artistas':
+          results = await ytmusic.searchArtists(query);
+          break;
+        case 'Álbumes':
+          results = await ytmusic.searchAlbums(query);
+          break;
+        case 'Playlists':
+          results = await ytmusic.searchPlaylists(query);
+          break;
+        case 'Canciones':
+        default:
+          results = await ytmusic.searchSongs(query);
+          break;
+      }
       setState(() {
-        _results = songs;
+        _results = results;
       });
     } catch (e) {
       setState(() {
@@ -176,33 +194,111 @@ class _SongSearchWidgetState extends State<SongSearchWidget> {
           Expanded(
             child: ListView.separated(
               itemCount: _results.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final song = _results[index];
-                return ListTile(
-                  leading: song.thumbnails.isNotEmpty
-                      ? Image.network(
-                          song.thumbnails.first.url,
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
-                        )
-                      : const SizedBox(width: 50, height: 50),
-                  title: Text(song.name),
-                  subtitle: Text(song.artist.name),
-                  trailing: Text(song.album?.name ?? ''),
-                  onTap: () {
-                    audioController.playSong(
-                      song.videoId,
-                      title: song.name,
-                      artist: song.artist.name,
-                      album: song.album?.name,
-                      thumbnailUrl: song.thumbnails.isNotEmpty
-                          ? song.thumbnails.first.url
-                          : null,
-                    );
-                  },
-                );
+                final item = _results[index];
+
+                if (item is SongDetailed) {
+                  return ListTile(
+                    leading: item.thumbnails.isNotEmpty
+                        ? Image.network(
+                            item.thumbnails.last.url,
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                          )
+                        : const SizedBox(width: 50, height: 50),
+                    title: Text(item.name),
+                    subtitle: Text(item.artist.name),
+                    trailing: Text(item.album?.name ?? ''),
+                    onTap: () {
+                      audioController.playSong(
+                        item.videoId,
+                        title: item.name,
+                        artist: item.artist.name,
+                        album: item.album?.name,
+                        thumbnailUrl: item.thumbnails.isNotEmpty
+                            ? item.thumbnails.last.url
+                            : null,
+                      );
+                    },
+                  );
+                }
+
+                if (item is ArtistDetailed) {
+                  return ListTile(
+                    leading: item.thumbnails.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(25),
+                            child: Image.network(
+                              item.thumbnails.last.url,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : const CircleAvatar(
+                            radius: 25,
+                            child: Icon(Icons.person),
+                          ),
+                    title: Text(item.name),
+                    subtitle: const Text('Artista'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ArtistDetailPage(artist: item),
+                        ),
+                      );
+                    },
+                  );
+                }
+
+                if (item is AlbumDetailed) {
+                  return ListTile(
+                    leading: item.thumbnails.isNotEmpty
+                        ? Image.network(
+                            item.thumbnails.last.url,
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                          )
+                        : const SizedBox(width: 50, height: 50),
+                    title: Text(item.name),
+                    subtitle: Text('Álbum • ${item.artist.name}'),
+                    trailing: Text(item.year != null ? '${item.year}' : ''),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AlbumDetailPage(album: item),
+                        ),
+                      );
+                    },
+                  );
+                }
+
+                if (item is PlaylistDetailed) {
+                  return ListTile(
+                    leading: item.thumbnails.isNotEmpty
+                        ? Image.network(
+                            item.thumbnails.last.url,
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                          )
+                        : const SizedBox(width: 50, height: 50),
+                    title: Text(item.name),
+                    subtitle: Text('Playlist • ${item.artist.name}'),
+                    onTap: () {
+                      _queryController.text = item.name;
+                      _selectedFilter = 'Canciones';
+                      _searchSongs();
+                    },
+                  );
+                }
+
+                return const SizedBox.shrink();
               },
             ),
           ),

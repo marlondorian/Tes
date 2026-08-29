@@ -126,6 +126,16 @@ class NativeControlManager {
   GtkWidget* FindWidget(const std::string& id);
   void RemoveAnyWidget(const std::string& id);
   void UpdateBottomNavStyles();
+
+  // GTK Theme extraction
+  void SubscribeToThemeChanges();
+  void UnsubscribeFromThemeChanges();
+  void SendGtkThemeToFlutter();
+  FlValue* BuildGtkThemeValue();
+  static void OnGtkThemeChanged(GObject* object, GParamSpec* pspec, gpointer user_data);
+
+  gulong theme_name_signal_id_{0};
+  gulong prefer_dark_signal_id_{0};
 };
 
 #endif  // NATIVE_CONTROL_MANAGER_H_
